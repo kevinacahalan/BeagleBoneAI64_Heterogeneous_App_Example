@@ -1,5 +1,7 @@
 APP ?= test.elf
-APP_SOURCES ?= test.c
+APP_SOURCES ?= $(wildcard r5/*.S) \
+          $(wildcard r5/*.c) \
+	  test.c
 
 CROSS_COMPILE ?= arm-none-eabi-
 
@@ -12,16 +14,17 @@ CROSS_OBJDUMP ?= $(CROSS_COMPILE)objdump
 ARCH ?= r5
 
 ifeq ($(ARCH),r5)
-	CFLAGS += -mcpu=cortex-r5
+	CFLAGS += -fno-exceptions -mcpu=cortex-r5 -marm -mfloat-abi=hard -O3 -I r5
 endif
 
 all: $(APP)
 
 clean:
 	rm -f $(APP)
+	rm -f $(APP).lst
 
 $(APP): $(APP_SOURCES) gcc.ld
-	$(CROSS_CC) $(CFLAGS) -Og --specs=nosys.specs --specs=nano.specs -T gcc.ld -o $(APP) $(APP_SOURCES)
+	$(CROSS_CC) $(CFLAGS) --specs=nosys.specs --specs=nano.specs -T gcc.ld -o $(APP) $(APP_SOURCES) -u _printf_float
 	$(CROSS_SIZE) $(APP)
 	$(CROSS_OBJDUMP) -xd $(APP) > $(APP).lst
 	# sudo cp $(APP) /lib/firmware/
@@ -29,3 +32,4 @@ $(APP): $(APP_SOURCES) gcc.ld
 	# sudo echo $(APP) > /sys/class/remoteproc/remoteproc18/firmware
 	# sudo echo start > /sys/class/remoteproc/remoteproc18/state
 	# sudo cat /sys/kernel/debug/remoteproc/remoteproc18/trace0
+
