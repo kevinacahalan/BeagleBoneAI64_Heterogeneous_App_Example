@@ -13,8 +13,14 @@ CROSS_OBJDUMP ?= $(CROSS_COMPILE)objdump
 
 ARCH ?= r5
 
+TI_LIB_PATH = $(HOME)/ti/ti-processor-sdk-rtos-j721e-evm-09_01_00_06/pdk_jacinto_09_01_00_22
+INCLUDES := -I$(TI_LIB_PATH)/packages
+LDFLAGS := -Wl,--start-group $(TI_LIB_PATH)/packages/ti/csl/lib/j721e/r5f/release/ti.csl.aer5f -Wl,--end-group
+INCLUDES += -Ir5
+DEFINES = -DSOC_J721E -DJ721E_TDA4VM
+
 ifeq ($(ARCH),r5)
-	CFLAGS += -fno-exceptions -mcpu=cortex-r5 -marm -mfloat-abi=hard -O3 -I r5
+	CFLAGS += -fno-exceptions -mcpu=cortex-r5 -marm -mfloat-abi=hard -O3 $(INCLUDES) $(DEFINES)
 endif
 
 all: $(APP)
@@ -24,7 +30,7 @@ clean:
 	rm -f $(APP).lst
 
 $(APP): $(APP_SOURCES) gcc.ld
-	$(CROSS_CC) $(CFLAGS) --specs=nosys.specs --specs=nano.specs -T gcc.ld -o $(APP) $(APP_SOURCES) -u _printf_float
+	$(CROSS_CC) $(CFLAGS) --specs=nosys.specs --specs=nano.specs -T gcc.ld -o $(APP) $(APP_SOURCES) $(LDFLAGS) -u _printf_float
 	$(CROSS_SIZE) $(APP)
 	$(CROSS_OBJDUMP) -xd $(APP) > $(APP).lst
 	# sudo cp $(APP) /lib/firmware/

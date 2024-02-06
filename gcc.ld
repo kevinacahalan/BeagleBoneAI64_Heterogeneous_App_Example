@@ -50,6 +50,10 @@ MEMORY
 ENTRY("vectors")
 SECTIONS
 {
+	/DISCARD/ : { 
+		*(.ARM.exidx*) 
+	}
+
 	.boot :
 	{
 		KEEP(*(.vector))

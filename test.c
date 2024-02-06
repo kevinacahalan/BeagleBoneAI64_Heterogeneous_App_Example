@@ -4,17 +4,21 @@
 #include <stdio.h>
 #include "r5/kernel/dpl/CacheP.h"
 #include "r5/kernel/dpl/MpuP_armv7.h"
+#include <ti/csl/csl_gpio.h>
 #include <stdlib.h>
+
+#define GPIO_BLOCK0_BASE_ADDR 0x00600000
+#define GPIO_BLOCK1_BASE_ADDR 0x00610000
 
 // global structures used by MPU and cache init code
 CacheP_Config gCacheConfig = {1, 0}; // cache on, no forced writethrough
-MpuP_Config gMpuConfig = {4, 1, 1}; // 4 regions, background region on, MPU on
+MpuP_Config gMpuConfig = {4, 1, 1};  // 4 regions, background region on, MPU on
 MpuP_RegionConfig gMpuRegionConfig[4] = {
     // Complete 32-bit address space
     {
-	.baseAddr = 0x0u,
+        .baseAddr = 0x0u,
         .size = MpuP_RegionSize_4G,
-	.attrs = {
+        .attrs = {
             .isEnable = 1,
             .isCacheable = 0,
             .isBufferable = 0,
@@ -28,15 +32,7 @@ MpuP_RegionConfig gMpuRegionConfig[4] = {
     {
         .baseAddr = 0x70000000u,
         .size = MpuP_RegionSize_8M,
-        .attrs = {
-            .isEnable = 1,
-            .isCacheable = 1,
-            .isBufferable = 1,
-            .isSharable = 0,
-            .isExecuteNever = 0,
-            .tex = 7,
-            .accessPerm = MpuP_AP_ALL_RW,
-            .subregionDisableMask = 0x0u},
+        .attrs = {.isEnable = 1, .isCacheable = 1, .isBufferable = 1, .isSharable = 0, .isExecuteNever = 0, .tex = 7, .accessPerm = MpuP_AP_ALL_RW, .subregionDisableMask = 0x0u},
     },
     // DDR region
     {
@@ -175,40 +171,38 @@ int _write(int handle, char *data, int size)
 // 7=5.176ns
 // 44=1.0us
 // 50=1.136us
-// 500=11.03us 
+// 500=11.03us
 // 5000=110us
 // 50000 = 1.1ms
 // 500000 = 11ms period
 
-int runToggle ()
+int runToggle()
 {
-        #define DELAY 44
+#define DELAY 20000000
+    // configure GPIO0_93 (which stands for GPIO with block # 0, pin 93) pin 9_14 as output
+    GPIOSetDirMode_v0(GPIO_BLOCK0_BASE_ADDR, 93, GPIO_DIRECTION_OUTPUT);
 
-        uint64_t* pDir = (uint64_t *) 0x00600060; //GPIO0 GPIO_DIR45
-        uint64_t* pSet = (uint64_t *) 0x00600068; //GPIO0 GPIO_SET45
-        uint64_t* pClr = (uint64_t *) 0x0060006C; //GPIO0 GPIO_CLR45
+    printf("\n");
+    printf("r5_toggle (Language: C)\n");
+    printf("\n");
 
-	//configure GPIO0_93 pin 9_14 as output
-        *pDir =  0xDFFFFFFF;
+    printf("started\n");
 
-        printf ("\n");
-        printf ("r5_toggle (Language: C)\n");
-        printf ("\n");
+    for (;;)
+    {
+        //set pin 9_14 ouput as high which is GPIO0_93, which stands for GPIO with block # 0, pin 93 
+        GPIOPinWrite_v0(GPIO_BLOCK0_BASE_ADDR, 93, GPIO_PIN_HIGH);
 
-        printf ("started\n");
+        for (volatile int i = 0; i < DELAY; i++)
+            ;
+        //set pin 9_14 output as low which is GPIO0_93, which stands for GPIO with block # 0, pin 93 
+        GPIOPinWrite_v0(GPIO_BLOCK0_BASE_ADDR, 93, GPIO_PIN_LOW);
+        for (volatile int i = 0; i < DELAY; i++)
+            ;
+    }
+    printf("stopped\n");
 
-        for(;;)
-        {
-                //set output bit 29 high
-                *pSet = 0x20000000;
-                for(volatile int i=0; i< DELAY; i++);
-                //set output bit 29 low
-                *pClr = 0x20000000;
-                for(volatile int i=0; i< DELAY; i++);
-        }
-        printf ("stopped\n");
-
-	return 0;
+    return 0;
 }
 
 int main()
@@ -216,4 +210,3 @@ int main()
     runToggle();
     return 0;
 }
-
