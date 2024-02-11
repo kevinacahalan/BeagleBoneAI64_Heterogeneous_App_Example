@@ -8,6 +8,7 @@ This example was built off of Fred Eckert's example: https://github.com/FredEcke
 
 ### Random Notes:
 * Use Debian as compile environment
+* https://forum.beagleboard.org/t/show-pins-with-ai-64-support-added/32489 This script may be helpful.
 
 # Cortex-R5 GPIO0_93 pin 9_14 toggle for Beaglebone AI-64
 
