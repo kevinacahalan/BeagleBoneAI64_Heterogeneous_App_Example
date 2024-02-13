@@ -2,8 +2,8 @@ This example was built off of Fred Eckert's example: https://github.com/FredEcke
 
 1. Grab the TI library from https://www.ti.com/tool/download/PROCESSOR-SDK-LINUX-SK-TDA4VM/09.01.00.06 
 2. Use 'tar -xzf download_name' to decompress the folder and place it in ~/ti/
-3. Run the installer and set the install location in ~/ti/
-4. Compile the program on the Beagle Board using the make command, not on Manjaro Linux because that can cause strange errors. Before compiling on the Beagle Board, move the TI CSL library files to the Beagle Board.
+3. Run the installer and set the install location in ~/ti/. The TI libraries can only be compiled on x86, so they cannot be compiled on the BeagleBone.
+4. Compile the program on the Beagle Board using the make command. It will not compile on Arch-based Linux systems. Before compiling on the Beagle Board, move the TI CSL library files to the Beagle Board.
 5. To change which pin is toggled, get pin information in this spreadsheet https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view?usp=sharing looking at column K. Example: pin9-14 is at GPIO_93.
 
 ### Random Notes:
