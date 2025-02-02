@@ -60,6 +60,9 @@ pin 9_14 will be toggling at about 22.7Hz.
 - This guy is doing PRU and DSP stuff
 https://github.com/loic-fejoz/beaglebone-ai64-tutorial
 
+- Using SDK10 with kernel 6.6 for R5 (These guys are using the TI build system)
+https://forum.beagleboard.org/t/bbai64-now-can-use-ti-sdk10-0-and-debug-r5/39459
+
 - Zephyr (currently work in progress)
 https://docs.zephyrproject.org/latest/boards/beagle/beaglebone_ai64/doc/index.html
 
