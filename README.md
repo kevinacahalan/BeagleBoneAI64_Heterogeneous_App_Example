@@ -1,3 +1,12 @@
+HEADS UP, THIS REPO IS JUST A FORK OF AN R5 example for now. I have not dug in yet.
+
+
+For this example to work use beagle firmware with kernel 5.10. Also, make sure to use this sketchy device tree setup...If you do not, even your GPIO may not work...
+
+https://github.com/kevinacahalan/bbai64_sketch_dt_setup_5_10
+
+
+
 This example was built off of Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
 1. Grab the TI library from https://www.ti.com/tool/download/PROCESSOR-SDK-LINUX-SK-TDA4VM/09.01.00.06 
