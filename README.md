@@ -1,7 +1,7 @@
 HEADS UP, THIS REPO IS JUST A FORK OF AN R5 example for now. I have not dug in yet.
 
 
-For this example to work use beagle firmware with kernel 5.10. Also, make sure to use this sketchy device tree setup...If you do not, even your GPIO may not work...
+For this example to work, use beagle firmware with kernel 5.10. Also, make sure to use this sketchy device tree setup...If you do not, even your GPIO may not work...
 
 https://github.com/kevinacahalan/bbai64_sketch_dt_setup_5_10
 
@@ -52,3 +52,30 @@ started
 
 pin 9_14 will be toggling at about 22.7Hz.
  
+
+
+
+
+### Random helpful resources:
+- This guy is doing PRU and DSP stuff
+https://github.com/loic-fejoz/beaglebone-ai64-tutorial
+
+- Zephyr (currently work in progress)
+https://docs.zephyrproject.org/latest/boards/beagle/beaglebone_ai64/doc/index.html
+
+- TDA4VM TRM
+https://www.ti.com/lit/zip/spruil1
+
+- Cortex R5 TRM
+https://developer.arm.com/documentation/ddi0460/d/?lang=en
+
+- BeagleBone Images
+https://rcn-ee.com/rootfs/
+
+- Debugging
+    - https://nmenon.github.io/k3ocd/
+    - https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
+    - https://www.youtube.com/watch?v=n3u3QgnAvV8
+    - OpenOCD config https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
+    - All sorts of Beagle images
+    https://rcn-ee.com/rootfs/
