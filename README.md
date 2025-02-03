@@ -2,7 +2,6 @@ HEADS UP, THIS REPO IS JUST A FORK OF AN R5 example for now. I have not dug in y
 
 
 For this example to work, use beagle firmware with kernel 5.10. Also, make sure to use this sketchy device tree setup...If you do not, even your GPIO may not work...
-
 https://github.com/kevinacahalan/bbai64_sketch_dt_setup_5_10
 
 
@@ -72,7 +71,10 @@ https://www.ti.com/lit/zip/spruil1
 - Cortex R5 TRM
 https://developer.arm.com/documentation/ddi0460/d/?lang=en
 
-- BeagleBone Images
+- Debian12 kernel 5.10 firmware images
+https://forum.beagleboard.org/t/arm64-debian-12-x-bookworm-monthly-snapshots-2023-10-07/35565
+
+- All sorts of other BeagleBone Images
 https://rcn-ee.com/rootfs/
 
 - Debugging
@@ -80,5 +82,3 @@ https://rcn-ee.com/rootfs/
     - https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
     - https://www.youtube.com/watch?v=n3u3QgnAvV8
     - OpenOCD config https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
-    - All sorts of Beagle images
-    https://rcn-ee.com/rootfs/
