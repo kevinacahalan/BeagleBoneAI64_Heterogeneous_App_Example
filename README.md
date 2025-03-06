@@ -1,3 +1,4 @@
+![demo_image](R5_LINUX.png)
 
 For this example to work, use beagle firmware with kernel 6.12. Make to to have the latest device tree overlay setup for 6.12.
 
