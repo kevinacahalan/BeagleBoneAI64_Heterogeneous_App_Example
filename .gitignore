@@ -1,2 +1,73 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
 *.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# vscode
+.vscode/c_cpp_properties.json
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# Random
+build/*
+
 *.lst
+LINUX_SIDE/.vscode/settings.json
+LINUX_SIDE/.vscode/c_cpp_properties.json
+R5_SIDE/.vscode/c_cpp_properties.json
+R5_SIDE/.vscode/settings.json
+R5_SIDE/.vscode/tasks.json
+LINUX_SIDE/linux_code/.vscode/settings.json
+LINUX_SIDE/build/LINUX_SIDE_aarch64
+
+*.xer5f
+LINUX_SIDE/build

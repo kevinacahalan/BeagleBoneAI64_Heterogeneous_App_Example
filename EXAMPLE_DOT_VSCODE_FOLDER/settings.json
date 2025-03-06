@@ -1,0 +1,26 @@
+{
+    "cSpell.words": [
+        "ARMC",
+        "crtbegin",
+        "crtend",
+        "ehrpwm",
+        "etext",
+        "fini",
+        "finit",
+        "lsin",
+        "lsine",
+        "MCSPI",
+        "MSRAM",
+        "muxed",
+        "NOLOAD",
+        "preinit",
+        "showpins",
+        "TCMA",
+        "TCMB",
+        "vtable"
+    ],
+    "files.associations": {
+        "bbai64_rpmsg.h": "c"
+    },
+    "makefile.configureOnOpen": true
+}

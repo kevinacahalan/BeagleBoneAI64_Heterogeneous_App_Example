@@ -1,0 +1,1 @@
+derived from ipc_test_setup_baremetal

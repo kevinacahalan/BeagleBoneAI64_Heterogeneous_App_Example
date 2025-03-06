@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "~/ti/ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages/**",
+                "${workspaceFolder}/LINUX_SIDE/linux_code/include",
+            ],
+            "defines": [
+                "-DSOC_J721E",
+                "R5",
+                "SOC_J721E",
+                "J721E_TDA4VM",
+                "BUILD_MCU2_0",
+                "A72_LINUX_OS",
+                "__ARM_ARCH_PROFILE='R'",
+                "__ARM_ARCH=7"
+            ],
+            // "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-arm64",
+            // "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+}
