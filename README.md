@@ -9,7 +9,7 @@ Example shows:
 2. How to setup boot code to enable the FPU
 3. How to initialize the MPU and cache to run code from DDR memory.
 3. How to setup handlers to deal with interrupts
-4. EPWM flashing LED on pin P9_25 for 25 seconds
+4. EPWM flashing LED on pin P9_25 for  seconds
 5. Rpmsg talking...Linux calling simple math functions in R5
 
 
@@ -81,7 +81,39 @@ make CROSSCOMPILE=true # default is to not cross compile
 `sudo [SCRIPT_DIR]/debug_run.sh`
 
 
-### Random helpful resources:
+### Useful Commands
+
+| Command                               | Description                                  |
+|---------------------------------------|----------------------------------------------|
+| `sudo k3conf show clocks`             | Displays all clock information.              |
+| `sudo k3conf dump clocks <device ID>` | Check status of clocks for device.           |
+| `dmesg \| grep -i "reserved mem"`     | Shows memory mapping information from logs.  |
+| `sudo cat /proc/iomem`                | More memory mapping info.                    |
+| `sudo beagle-version \| grep UBOOT`   | Displays loaded device tree overlays.        |
+
+### Useful Links
+
+#### Documentation
+- **[Pin Mappings](https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view)**: Pin mapping spreadsheet.
+- **[Device and Clock IDs](https://software-dl.ti.com/tisci/esd/latest/5_soc_doc/j721e/clocks.html)**: TI documentation detailing device and clock IDs.
+- **[TDA4VM Processor Page](https://www.ti.com/product/TDA4VM)**: Official TI page for the TDA4VM processor.
+- **[TDA4VM TRM](https://www.ti.com/lit/zip/spruil1)**: Technical Reference Manual for the TDA4VM.
+- **[Cortex R5 TRM](https://developer.arm.com/documentation/ddi0460/d/?lang=en)**: Technical Reference Manual for the Cortex R5.
+- **[TI RTOS SDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/10_00_00_05/exports/docs/psdk_rtos/docs/user_guide/overview.html#)**: Overview of the TI RTOS SDK.
+- **[TI PDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/10_00_00_05/exports/docs/pdk_jacinto_10_01_00_25/docs/pdk_introduction.html#Documentation)**: Links to API guide and user guide
+
+#### Tutorials
+- **[Flashing eMMC](https://forum.beagleboard.org/t/ai-64-how-to-flash-emmc/32384)**: Forum guide on how to flash the eMMC on the BeagleBone AI-64.
+- **[More on Flashing](https://forum.beagleboard.org/t/tda4vm-debian-11-3-flasher-does-not-produce-a-functional-emmc/33288)**: Additional forum discussion on flashing-related issues.
+
+#### Debugging
+
+- **[K3 OCD Guide](https://nmenon.github.io/k3ocd/)**: A guide on using OpenOCD for debugging on the BeagleBone AI-64.
+- **[Debugging Options Forum Thread](https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5)**: A discussion on various debugging options available for the BeagleBone AI-64.
+- **[YouTube Debugging Tutorial](https://www.youtube.com/watch?v=n3u3QgnAvV8)**: A video tutorial covering debugging techniques.
+- **[OpenOCD Config Issue](https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31)**: Issue tracker for OpenOCD configuration specific to the BeagleBone AI-64.
+
+#### Work by others:
 - This guy is doing PRU and DSP stuff
 https://github.com/loic-fejoz/beaglebone-ai64-tutorial
 
@@ -91,30 +123,9 @@ https://forum.beagleboard.org/t/bbai64-now-can-use-ti-sdk10-0-and-debug-r5/39459
 - Zephyr (currently work in progress)
 https://docs.zephyrproject.org/latest/boards/beagle/beaglebone_ai64/doc/index.html
 
+#### Other
+- **[The PRU Development Kit](https://git.ti.com/cgit/pru-software-support-package/pru-software-support-package/)**: TI’s PRU software support package for development.
+- **[Beagle Images](https://www.beagleboard.org/distros)**: Release images.
+- **[Random Beagle Images](https://rcn-ee.com/rootfs/)**: Random images.
 
-##### Debugging
-- https://nmenon.github.io/k3ocd/
-- https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
-- https://www.youtube.com/watch?v=n3u3QgnAvV8
-- OpenOCD config https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
-
-#### Useful commands:
-* `sudo k3conf show clocks` to show all clocks
-* `sudo k3conf dump clocks <device ID>` to check status of clocks for device
-* `dmesg | grep -i "reserved mem"` to view memory mapping stuff
-* `sudo cat /proc/iomem` to view more memory mapping stuff
-* `sudo beagle-version | grep UBOOT` to view loaded device tree overlays
-
-#### Useful links:
-- Pin mappings https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view.
-- Device and clock IDs https://software-dl.ti.com/tisci/esd/latest/5_soc_doc/j721e/clocks.html.
-- Processor page https://www.ti.com/product/TDA4VM.
-- TDA4VM TRM https://www.ti.com/lit/zip/spruil1
-- Cortex R5 TRM https://developer.arm.com/documentation/ddi0460/d/?lang=en
-- TI RTOS SDK documentation https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/10_00_00_05/exports/docs/psdk_rtos/docs/user_guide/overview.html#
-- TI PDK documentation https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/10_00_00_05/exports/docs/pdk_jacinto_10_01_00_25/docs/pdk_introduction.html#Documentation
-- The PRU development kit https://git.ti.com/cgit/pru-software-support-package/pru-software-support-package/
-- Flashing eMMC https://forum.beagleboard.org/t/ai-64-how-to-flash-emmc/32384
-- More on flashing https://forum.beagleboard.org/t/tda4vm-debian-11-3-flasher-does-not-produce-a-functional-emmc/33288
-- All sorts of other BeagleBone Images https://rcn-ee.com/rootfs/
 
