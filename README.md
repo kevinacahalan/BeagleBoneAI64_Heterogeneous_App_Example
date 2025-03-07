@@ -30,6 +30,8 @@ Example shows:
 
 
 #### Setup and compile ti RTOS SDK
+Make sure to use **Debian12** for building. It will make your life easier. On windows use WSL Debian 12.
+
 1.  Run `wget https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-bA0wfI4X2g/10.00.00.05/ti-processor-sdk-rtos-j721e-evm-10_00_00_05.tar.gz`
 2.  Use `tar -xzf ti-processor-sdk-rtos-j721e-evm-10_00_00_05.tar.gz` to decompress
 3.  Place decompressed sdk folder in ~/ti/
