@@ -82,6 +82,18 @@ make CROSSCOMPILE=true # default is to not cross compile
 #### To run
 `sudo [SCRIPT_DIR]/debug_run.sh`
 
+### Device tree info
+- Add your overlays to `blablabla/extlinux/extlinux.conf`
+- Overlay source is located at `/opt/source/something/something`
+- To compile source run `sudo make clean` and `sudo make` from `bla bla bla`
+- To install changes run `sudo make arm64_install` from `bla bla bla`. Make sure to reference your overlays in `extlinux.conf`
+- Connect to debug uart and have fun. You'll be down for some trial and error. You may end up re-flashing your board several times to recover it...
+
+There will be better instructions written here in the future
+
+- You could make use of https://www.ti.com/tool/download/SYSCONFIG to figure out pin muxing.
+- v6.12.x-Beagle/src/arm64/ti/k3-j721e-main.dtsi is a very important file. If you want to use
+some IO device that is not defined in here, you will have to dig into the TDA4VM TRM and write your equivalent fanciness in your overlay. Defining power-domains, clocks, so on. For example for eqep... (vague understanding of things that could be wrong...)
 
 ### Useful Commands
 
