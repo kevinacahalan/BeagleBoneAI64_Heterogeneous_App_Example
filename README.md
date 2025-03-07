@@ -91,23 +91,12 @@ https://forum.beagleboard.org/t/bbai64-now-can-use-ti-sdk10-0-and-debug-r5/39459
 - Zephyr (currently work in progress)
 https://docs.zephyrproject.org/latest/boards/beagle/beaglebone_ai64/doc/index.html
 
-- TDA4VM TRM
-https://www.ti.com/lit/zip/spruil1
 
-- Cortex R5 TRM
-https://developer.arm.com/documentation/ddi0460/d/?lang=en
-
-- Debian12 kernel 5.10 firmware images
-https://forum.beagleboard.org/t/arm64-debian-12-x-bookworm-monthly-snapshots-2023-10-07/35565
-
-- All sorts of other BeagleBone Images
-https://rcn-ee.com/rootfs/
-
-- Debugging
-    - https://nmenon.github.io/k3ocd/
-    - https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
-    - https://www.youtube.com/watch?v=n3u3QgnAvV8
-    - OpenOCD config https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
+##### Debugging
+- https://nmenon.github.io/k3ocd/
+- https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
+- https://www.youtube.com/watch?v=n3u3QgnAvV8
+- OpenOCD config https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
 
 #### Useful commands:
 * `sudo k3conf show clocks` to show all clocks
@@ -115,3 +104,17 @@ https://rcn-ee.com/rootfs/
 * `dmesg | grep -i "reserved mem"` to view memory mapping stuff
 * `sudo cat /proc/iomem` to view more memory mapping stuff
 * `sudo beagle-version | grep UBOOT` to view loaded device tree overlays
+
+#### Useful links:
+- Pin mappings https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view.
+- Device and clock IDs https://software-dl.ti.com/tisci/esd/latest/5_soc_doc/j721e/clocks.html.
+- Processor page https://www.ti.com/product/TDA4VM.
+- TDA4VM TRM https://www.ti.com/lit/zip/spruil1
+- Cortex R5 TRM https://developer.arm.com/documentation/ddi0460/d/?lang=en
+- TI RTOS SDK documentation https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/10_00_00_05/exports/docs/psdk_rtos/docs/user_guide/overview.html#
+- TI PDK documentation https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/10_00_00_05/exports/docs/pdk_jacinto_10_01_00_25/docs/pdk_introduction.html#Documentation
+- The PRU development kit https://git.ti.com/cgit/pru-software-support-package/pru-software-support-package/
+- Flashing eMMC https://forum.beagleboard.org/t/ai-64-how-to-flash-emmc/32384
+- More on flashing https://forum.beagleboard.org/t/tda4vm-debian-11-3-flasher-does-not-produce-a-functional-emmc/33288
+- All sorts of other BeagleBone Images https://rcn-ee.com/rootfs/
+
