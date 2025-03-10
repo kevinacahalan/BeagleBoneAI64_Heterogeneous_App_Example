@@ -104,7 +104,7 @@ some IO device that is not defined in here, you will have to dig into the TDA4VM
 | `dmesg \| grep -i "reserved mem"`     | Shows memory mapping information from logs.  |
 | `sudo cat /proc/iomem`                | More memory mapping info.                    |
 | `sudo beagle-version \| grep UBOOT`   | Displays loaded device tree overlays.        |
-| `ls /sys/devices/platform/bus@100000/`| Devices that can not be used from linux???   |
+| `ls /sys/devices/platform/bus@100000/`| Devices that can now be used from linux???   |
 
 ### Useful Links
 
