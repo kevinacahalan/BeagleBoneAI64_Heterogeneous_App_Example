@@ -29,16 +29,17 @@ int32_t Ipc_echo_test(void)
     setup_ipc(&handle_chrdev, &myEndPt);
     /* run responder function to receive and reply messages back */
 
+    printf("Inside Ipc_echo_test waiting for messages from linux\n");
     for (size_t i = 0;; i++)
     {   
-        Osal_delay(1000); // 1/10 second 
-        printf("R5 loop print %d\n", i);
+        Osal_delay(1000); // 1 second 
+        // printf("R5 loop print %d\n", i);
         int rt = 0;
         rt = process_one_rproc_message(&handle_chrdev, &myEndPt, &remoteEndPt, &remoteProcId);
         switch (rt)
         {
-        case IPC_ETIMEOUT:
-            printf("Tried to pull a message but there were none\n");
+        case IPC_ETIMEOUT: // no message
+            // printf("Tried to pull a message but there were none\n");
             break;
         
         default:
@@ -65,7 +66,10 @@ int main()
         printf("print from R5 %d/%d\n", i, count);
     }
 
+    // output some 
     test_spi_mcspi7(0);
+    printf("Done SPI7 test\n");
+    Osal_delay(1000);
 
     printf("About to do IPC test");
     Ipc_echo_test();
