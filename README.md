@@ -83,15 +83,26 @@ make CROSSCOMPILE=true # default is to not cross compile
 `sudo [SCRIPT_DIR]/debug_run.sh`
 
 ### Device tree info
-- Add your overlays to `blablabla/extlinux/extlinux.conf`
-- Overlay source is located at `/opt/source/something/something`
-- To compile source run `sudo make clean` and `sudo make` from `bla bla bla`
-- To install changes run `sudo make arm64_install` from `bla bla bla`. Make sure to reference your overlays in `extlinux.conf`
-- Connect to debug uart and have fun. You'll be down for some trial and error. You may end up re-flashing your board several times to recover it...
+- Copy out `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board
+- To compile overlays source on board run `sudo make clean` and `sudo make` from `/opt/source/dtb-6.12-Beagle`
+- To install the overlays, from `/opt/source/dtb-6.12-Beagle` run `sudo make arm64_install`
+- On the board, in the config file`/boot/firmware/extlinux/extlinux.conf`, replace the line `#fdtoverlays /overlays/<file>.dtbo` with `fdtoverlays /overlays/k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtbo /overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtbo`
+- Connect to debug uart and have fun. If things go bad you'll be down for some trial and error. You may end up re-flashing your board several times to recover it...
 
-There will be better instructions written here in the future
+If your boot works correctly, you will see the following in your debug uart output on boot:
+```
+Retrieving file: /ti/k3-j721e-beagleboneai64.dtb
+Retrieving file: /overlays/k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtbo
+Retrieving file: /overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtbo
+## Flattened Device Tree blob at 88000000
+   Booting using the fdt blob at 0x88000000
+Working FDT set to 88000000
+   Loading Device Tree to 000000008ffde000, end 000000008fffffff ... OK
+Working FDT set to 8ffde000
 
-- You could make use of https://www.ti.com/tool/download/SYSCONFIG to figure out pin muxing.
+```
+
+- You could make use of https://www.ti.com/tool/download/SYSCONFIG to figure out pin muxing when making your own overlays.
 - v6.12.x-Beagle/src/arm64/ti/k3-j721e-main.dtsi is a very important file. If you want to use
 some IO device that is not defined in here, you will have to dig into the TDA4VM TRM and write your equivalent fanciness in your overlay. Defining power-domains, clocks, so on. For example for eqep... (vague understanding of things that could be wrong...)
 
