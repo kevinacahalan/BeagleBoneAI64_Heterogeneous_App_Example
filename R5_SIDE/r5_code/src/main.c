@@ -51,6 +51,7 @@ int32_t Ipc_echo_test(void)
 }
 
 #include <io_test_functions/epwm_tests.h>
+#include <io_test_functions/spi_tests.h>
 int main()
 {   
     printf("R5_SIDE started from main\n");
@@ -64,6 +65,9 @@ int main()
         printf("print from R5 %d/%d\n", i, count);
     }
 
+    test_spi_mcspi7(0);
+
+    printf("About to do IPC test");
     Ipc_echo_test();
     
 
