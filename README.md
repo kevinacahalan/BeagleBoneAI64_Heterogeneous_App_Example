@@ -83,7 +83,7 @@ make CROSSCOMPILE=true # default is to not cross compile
 `sudo [SCRIPT_DIR]/debug_run.sh`
 
 ### Device tree info
-- Copy out `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board
+- Copy the overlays from our `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board.
 - To compile overlays source on board run `sudo make clean` and `sudo make` from `/opt/source/dtb-6.12-Beagle`
 - To install the overlays, from `/opt/source/dtb-6.12-Beagle` run `sudo make arm64_install`
 - On the board, in the config file`/boot/firmware/extlinux/extlinux.conf`, replace the line `#fdtoverlays /overlays/<file>.dtbo` with `fdtoverlays /overlays/k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtbo /overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtbo`
