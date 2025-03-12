@@ -6,11 +6,12 @@ This example was built off of Fred Eckert's example: https://github.com/FredEcke
 
 Example shows:
 1. How to initialize a remoteproc resource table with a working trace log.
-2. How to setup boot code to enable the FPU
+2. How to setup boot code to enable the FPU.
 3. How to initialize the MPU and cache to run code from DDR memory.
-3. How to setup handlers to deal with interrupts
-4. EPWM flashing LED on pin P9_25 for  seconds
-5. Rpmsg talking...Linux calling simple math functions in R5
+3. How to setup handlers to deal with interrupts.
+4. EPWM flashing LED on pin P9_25 for  seconds.
+5. Rpmsg talking...Linux calling simple math functions in R5.
+4. SPI7 transfers, pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
 
 
 
