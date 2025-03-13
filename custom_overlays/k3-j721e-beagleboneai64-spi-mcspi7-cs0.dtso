@@ -1,3 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-only OR MIT
+/*
+ * DT Overlay for pins P9_28(cs0), P9_31(clk), P9_30(MOSI), P9_29B(MISO) SPI7 connections within the expansion header.
+ *
+ * Copyright (C) 2023 Texas Instruments Incorporated - https://www.ti.com/
+ *
+ */
+
+/* Tested with spidev_test and logic analyzer. Output on P9_30 works, input on 
+ * P9_29 does not work. No idea if input work from R5 or not.
+*/
+
+
 /dts-v1/;
 /plugin/;
 
@@ -30,7 +43,16 @@
 };
 
 &main_spi7 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&mcspi7_cs_zero>;
-	status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    pinctrl-names = "default";
+    pinctrl-0 = <&mcspi7_cs_zero>;
+    status = "okay";
+
+    channel@0 {
+        symlink = "bone/spi/7_cs0";
+        compatible = "rohm,dh2228fv";
+        reg = <0>; /* CE0 */
+        spi-max-frequency = <125000000>;
+    };
 };
