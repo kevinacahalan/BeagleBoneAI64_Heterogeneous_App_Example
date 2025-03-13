@@ -109,14 +109,15 @@ some IO device that is not defined in here, you will have to dig into the TDA4VM
 
 ### Useful Commands
 
-| Command                               | Description                                  |
-|---------------------------------------|----------------------------------------------|
-| `sudo k3conf show clocks`             | Displays all clock information.              |
-| `sudo k3conf dump clocks <device ID>` | Check status of clocks for device.           |
-| `dmesg \| grep -i "reserved mem"`     | Shows memory mapping information from logs.  |
-| `sudo cat /proc/iomem`                | More memory mapping info.                    |
-| `sudo beagle-version \| grep UBOOT`   | Displays loaded device tree overlays.        |
-| `ls /sys/devices/platform/bus@100000/`| Devices that can now be used from linux???   |
+| Command                                           | Description                                  |
+|---------------------------------------------------|----------------------------------------------|
+| `sudo k3conf show clocks`                         | Displays all clock information.              |
+| `sudo k3conf dump clocks <device ID>`             | Check status of clocks for device.           |
+| `dmesg \| grep -i "reserved mem"`                 | Shows memory mapping information from logs.  |
+| `sudo cat /proc/iomem`                            | More memory mapping info.                    |
+| `sudo beagle-version \| grep UBOOT`               | Displays loaded device tree overlays.        |
+| `ls /sys/devices/platform/bus@100000/`            | Devices that can now be used from linux???   |
+| `dtc -I fs /sys/firmware/devicetree/base > dt.txt`| For dt debugging                 |
 
 ### Useful Links
 
