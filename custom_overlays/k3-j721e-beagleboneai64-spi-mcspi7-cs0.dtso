@@ -49,7 +49,7 @@
 	/* THIS IS FOR SPIDEV, to see device at /dev/bone/spi, first run `sudo modprobe spidev` */
 	/* When controlling SPI from outside linux, you may want to delete this spidev stuff */
     channel@0 {
-        symlink = "bone/spi/spi7_cs0";
+        symlink = "bone/spi/7.0";
         compatible = "rohm,dh2228fv";
         reg = <0>; /* CE0 */
         spi-max-frequency = <125000000>;
