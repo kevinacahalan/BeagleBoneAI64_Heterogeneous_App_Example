@@ -102,10 +102,37 @@ Working FDT set to 88000000
 Working FDT set to 8ffde000
 
 ```
+#### Resources:
 
 - You could make use of https://www.ti.com/tool/download/SYSCONFIG to figure out pin muxing when making your own overlays.
 - v6.12.x-Beagle/src/arm64/ti/k3-j721e-main.dtsi is a very important file. If you want to use
-some IO device that is not defined in here, you will have to dig into the TDA4VM TRM and write your equivalent fanciness in your overlay. Defining power-domains, clocks, so on. For example for eqep... (vague understanding of things that could be wrong...)
+some IO device that is not defined in here, you will have to dig into the TDA4VM TRM and write your equivalent fanciness in your own overlay. Defining power-domains, clocks, so on. For example for eqep...
+
+- To figure out which SoC pad numbers go with which BB header pins, look at columns A and B
+in the following spreadsheet. To figure out mux modes, look at row 10.
+https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view?pli=1
+
+- To figure out the addresses of SoC pads, look at table "Table 5-125. Pin Multiplexing" in the TDA4VM Processors datasheet
+ https://www.ti.com/lit/ds/symlink/tda4vm.pdf?ts=1741890214437&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTDA4VM
+ 
+
+#### Walkthrough of process to figure out muxing
+
+From the spreadsheet we see that pad AC22 is the first pad on BB header pin P9_22. AC22 is thus known as P9_22a. The alternative
+pad, U29, is known as P9_22b. From Looking at the TDA4VM datasheet, we see that AC22(aka P9_22a) has the address 0x00011C09C. For 
+the J721E_IOPAD() pin-mux macro, we need the bottom 24bits of the address, so 0x09c, or 0x9c. 
+
+To mux AC22(aka P9_22a) to be SPI6_CLK, as figured out from the spreadsheet, we need to set AC22 to mux-mode 4. And since
+a SPI clock is an output signal, the pin should be put set to PIN_OUTPUT mode.
+So `J721E_IOPAD(0x9c, PIN_OUTPUT, 4)`
+
+We will also need to disable the second SoC pad that shares the same BB header pin. The SoC pad known as pin P9_22b, or 
+pad U29. Using the same process as walked through with pad AC22, you get the following:
+`J721E_IOPAD(0x170, PIN_DISABLE, 7)`
+
+So to mux SPI6_CLK on BB pin P9_22:
+J721E_IOPAD(0x9c, PIN_OUTPUT, 4)
+J721E_IOPAD(0x170, PIN_DISABLE, 7)
 
 ### Useful Commands
 
