@@ -87,14 +87,13 @@ make CROSSCOMPILE=true # default is to not cross compile
 - Copy the overlays from our `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board.
 - To compile overlays source on board run `sudo make clean` and `sudo make` from `/opt/source/dtb-6.12-Beagle`
 - To install the overlays, from `/opt/source/dtb-6.12-Beagle` run `sudo make arm64_install`
-- On the board, in the config file`/boot/firmware/extlinux/extlinux.conf`, replace the line `#fdtoverlays /overlays/<file>.dtbo` with `fdtoverlays /overlays/k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtbo /overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtbo`
+- On the board, in the config file`/boot/firmware/extlinux/extlinux.conf`, replace the line `#fdtoverlays /overlays/<file>.dtbo` with `fdtoverlays /overlays/our-custom-bbai64-overlay.dtbo`
 - Connect to debug uart and have fun. If things go bad you'll be down for some trial and error. You may end up re-flashing your board several times to recover it...
 
 If your boot works correctly, you will see the following in your debug uart output on boot:
 ```
 Retrieving file: /ti/k3-j721e-beagleboneai64.dtb
-Retrieving file: /overlays/k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtbo
-Retrieving file: /overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtbo
+Retrieving file: /overlays/our-custom-bbai64-overlay.dtbo
 ## Flattened Device Tree blob at 88000000
    Booting using the fdt blob at 0x88000000
 Working FDT set to 88000000
@@ -144,7 +143,8 @@ J721E_IOPAD(0x170, PIN_DISABLE, 7)
 | `sudo cat /proc/iomem`                            | More memory mapping info.                    |
 | `sudo beagle-version \| grep UBOOT`               | Displays loaded device tree overlays.        |
 | `ls /sys/devices/platform/bus@100000/`            | Devices that can now be used from linux???   |
-| `dtc -I fs /sys/firmware/devicetree/base > dt.txt`| For dt debugging                 |
+| `dtc -I fs /sys/firmware/devicetree/base > dt.txt`| For dt debugging                             |
+| `sudo journalctl -k`                              | View kernel logs                             |
 
 ### Useful Links
 

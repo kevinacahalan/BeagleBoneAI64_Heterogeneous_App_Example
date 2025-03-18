@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: GPL-2.0-only OR MIT
+/*
+ * DT Overlay
+ *
+ * Copyright (C) 2023 Texas Instruments Incorporated - https://www.ti.com/
+ *
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include "ti/k3-pinctrl.h"
+
+/*
+ * Helper to show loaded overlays under: /proc/device-tree/chosen/overlays/
+*/
+&{/chosen} {
+        overlays {
+                our-custom-bbai64-overlay.kernel = __TIMESTAMP__;
+                mcspi7.2170000.spi = "k3-j721e-beagleboneai64-spi-mcspi7-cs0.2170000";
+                p9_25.3040000.pwm = "k3-j721e-beagleboneai64-pwm-epwm4-p9_25.3040000.1.P9_25";
+        };
+};
+
+/* Taken from https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/blob/eeb6e572cff523da1dcaa4dfc11f580b66155b5f/src/arm64/overlays/k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtso */
+&main_pmx0 {
+	P9_25_pwm: P9-25-pwm-pins {
+		pinctrl-single,pins = <
+			J721E_IOPAD(0x1A4, PIN_OUTPUT, 6) /* (W26) RGMII6_RXC.EHRPWM4_B */
+			J721E_IOPAD(0x200, PIN_DISABLE, 7) /* (AC4) UART1_CTSn.GPIO0_127 */
+		>;
+	};
+};
+
+&main_ehrpwm4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&P9_25_pwm>;
+	status = "okay";
+};
+
+
+/* Taken from https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/blob/3d2ad1c69b99c5a6b52bcd35e404397fabf5dbc6/src/arm64/overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtso */
+&main_pmx0 {
+	mcspi7_cs_zero: mcspi7-cs0-pins {
+		pinctrl-single,pins = <
+			J721E_IOPAD(0x234, PIN_OUTPUT, 6) /* (U3) EXT_REFCLK1.SPI7_CLK P9_31a*/
+			J721E_IOPAD(0xD4, PIN_DISABLE, 7) /* (AB26) disable p9_31b */
+			J721E_IOPAD(0x230, PIN_OUTPUT, 6) /* (U2) ECAP0_IN_APWM_OUT.SPI7_CS0 P9_28a */
+			J721E_IOPAD(0xB0, PIN_DISABLE, 7) /* (AF28) disable p9_28b */
+			J721E_IOPAD(0x238, PIN_OUTPUT, 6) /* (V6) TIMER_IO0.SPI7_D0 MOSI P9_30a */
+			J721E_IOPAD(0xB4, PIN_DISABLE, 7) /* (AE28) disable P9_30b */
+			J721E_IOPAD(0x23c, PIN_INPUT, 6) /* (V5) TIMER_IO1.SPI7_D1 MISO P9_29a */
+			J721E_IOPAD(0xD8, PIN_DISABLE, 7) /* (AB25) disable p9_29b */
+		>;
+	};
+};
+
+&main_spi7 {
+    #address-cells = <1>;
+    #size-cells = <0>;
+    pinctrl-names = "default";
+    pinctrl-0 = <&mcspi7_cs_zero>;
+    ti,spi-num-cs = <1>;
+    ti,pindir-d0-out-d1-in;
+    status = "okay";
+
+	/* THIS IS FOR SPIDEV, to see device at /dev/bone/spi, first run `sudo modprobe spidev` */
+	/* When controlling SPI from outside linux, you may want to delete this spidev stuff */
+    channel@0 {
+        symlink = "bone/spi/7.0";
+        compatible = "rohm,dh2228fv";
+        reg = <0>; /* CE0 */
+        spi-max-frequency = <125000000>;
+    };
+};
