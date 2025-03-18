@@ -8,12 +8,22 @@ Example shows:
 1. How to initialize a remoteproc resource table with a working trace log.
 2. How to setup boot code to enable the FPU.
 3. How to initialize the MPU and cache to run code from DDR memory.
-3. How to setup handlers to deal with interrupts.
-4. EPWM flashing LED on pin P9_25 for  seconds.
-5. Rpmsg talking...Linux calling simple math functions in R5.
-4. SPI7 transfers, pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
+4. How to setup handlers to deal with interrupts.
+5. EPWM flashing LED on pin P9_25 for  seconds.
+6. Rpmsg talking...Linux calling simple math functions in R5.
+7. SPI7 transfers, pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
+
+Planned:
+1. Shared memory between Linux and R5
+2. EQEP encoder reading
+3. GPIO from linux
+4. GPIO from R5
+5. SPI from linux
+7. UART from linux
+8. UART from R5
 
 
+If anybody wants to contribute random stuff, please do.
 
 
 #### Setup board
@@ -23,10 +33,11 @@ Example shows:
 4. Power cycle board several times
 5. Run `df -h` to ensure you are now booting from your SD card
 6. Run this to get latest DT source among other important things `sudo apt update ; sudo apt-get dist-upgrade -y`
-7. Add the overlay k3-j721e-beagleboneai64-pwm-epwm4-p9_25.dtbo to extlinux.conf
-8. Power cycle the boars several times
+7. Compile and install custom_overlays/our-custom-bbai64-overlay.dtso (refer to "Device tree info")
+7. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
+8. Power cycle the board several times
 9. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
-10. Check and make sure P9_25 is muxed to ehrpwm4_b `sudo ./scripts/show-pins.pl`
+10. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
 
 
 
