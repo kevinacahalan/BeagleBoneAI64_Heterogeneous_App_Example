@@ -12,6 +12,9 @@
 #include <dt-bindings/gpio/gpio.h>
 #include "ti/k3-pinctrl.h"
 
+/* To define TI_SCI_PD_EXCLUSIVE for eqep */
+#include <dt-bindings/soc/ti,sci_pm_domain.h>
+
 /*
  * Helper to show loaded overlays under: /proc/device-tree/chosen/overlays/
 */
@@ -23,6 +26,9 @@
         };
 };
 
+
+/* These pins are ordered the same as shown by the show-pins.pl script */
+/* MAKE SURE to comment out pins from here before using them for other IO */
 &main_pmx0 {
     gpio0_pins_default: gpio0-default-pins {
         pinctrl-single,pins = <
@@ -43,10 +49,10 @@
             J721E_IOPAD(0x3c, PIN_INPUT, 7) /* P8_07 (AD24) PRG1_PRU0_GPO14.GPIO0_15 */
             J721E_IOPAD(0x40, PIN_INPUT, 7) /* P8_10 (AC24) PRG1_PRU0_GPO15.GPIO0_16 */
             J721E_IOPAD(0x44, PIN_INPUT, 7) /* P8_09 (AE24) PRG1_PRU0_GPO16.GPIO0_17 */
-            J721E_IOPAD(0x4c, PIN_INPUT, 7) /* P9_42b (AJ21) PRG1_PRU0_GPO17.GPIO0_18 */
+            /* conflicts EQEP0_A J721E_IOPAD(0x4c, PIN_INPUT, 7) */ /* P9_42b (AJ21) PRG1_PRU0_GPO17.GPIO0_18 */
             J721E_IOPAD(0x54, PIN_INPUT, 7) /* P8_03 (AH21) PRG1_PRU0_GPO19.GPIO0_20 */
-            J721E_IOPAD(0x64, PIN_INPUT, 7) /* P8_35a (AD23) PRG1_PRU1_GPO3.GPIO0_24 */
-            J721E_IOPAD(0x68, PIN_INPUT, 7) /* P8_33a (AH24) PRG1_PRU1_GPO4.GPIO0_25 */
+            /* EQEP1_A J721E_IOPAD(0x64, PIN_INPUT, 7) */ /* P8_35a (AD23) PRG1_PRU1_GPO3.GPIO0_24 */
+            /* EQEP1_B J721E_IOPAD(0x68, PIN_INPUT, 7) */ /* P8_33a (AH24) PRG1_PRU1_GPO4.GPIO0_25 */
             J721E_IOPAD(0x6c, PIN_INPUT, 7) /* P8_32a (AG21) PRG1_PRU1_GPO5.GPIO0_26 */
             /* J721E_IOPAD(0x74, PIN_INPUT, 7) */ /* P9_17a (AC21) PRG1_PRU1_GPO7.GPIO0_28 */
             J721E_IOPAD(0x7c, PIN_INPUT, 7) /* P8_21 (AF21) PRG1_PRU1_GPO9.GPIO0_30 */
@@ -61,7 +67,7 @@
             /* J721E_IOPAD(0xb0, PIN_INPUT, 7) */ /* P9_28b (AF28) PRG0_PRU0_GPO0.GPIO0_43 */
             /* J721E_IOPAD(0xb4, PIN_INPUT, 7) */ /* P9_30b (AE28) PRG0_PRU0_GPO1.GPIO0_44 */
             J721E_IOPAD(0xb8, PIN_INPUT, 7) /* P9_12 (AE27) PRG0_PRU0_GPO2.GPIO0_45 */
-            J721E_IOPAD(0xbc, PIN_INPUT, 7) /* P9_27a (AD26) PRG0_PRU0_GPO3.GPIO0_46 */
+            /* conflicts EQEP0_B J721E_IOPAD(0xbc, PIN_INPUT, 7) */ /* P9_27a (AD26) PRG0_PRU0_GPO3.GPIO0_46 */
             J721E_IOPAD(0xc0, PIN_INPUT, 7) /* P9_15 (AD25) PRG0_PRU0_GPO4.GPIO0_47 */
             J721E_IOPAD(0xc4, PIN_INPUT, 7) /* P8_04 (AC29) PRG0_PRU0_GPO5.GPIO0_48 */
             J721E_IOPAD(0xcc, PIN_INPUT, 7) /* P9_33b (AC28) PRG0_PRU0_GPO7.GPIO0_50 */
@@ -105,14 +111,14 @@
             /* J721E_IOPAD(0x1a4, PIN_INPUT, 7) */ /* P9_25b (W26) RGMII6_RXC.GPIO0_104 */
             J721E_IOPAD(0x1a8, PIN_INPUT, 7) /* P8_38a (Y29) RGMII6_RD3.GPIO0_105 */
             J721E_IOPAD(0x1ac, PIN_INPUT, 7) /* P8_37a (Y27) RGMII6_RD2.GPIO0_106 */
-            J721E_IOPAD(0x1c0, PIN_INPUT, 7) /* P8_33b (AA2) SPI0_CS0.GPIO0_111 */
+            /* conflicts EQEP1_B J721E_IOPAD(0x1c0, PIN_INPUT, 7) */ /* P8_33b (AA2) SPI0_CS0.GPIO0_111 */
             /* J721E_IOPAD(0x1d0, PIN_INPUT, 7) */ /* P9_17b (AA3) SPI0_D1.GPIO0_115 */
-            J721E_IOPAD(0x1d4, PIN_INPUT, 7) /* P8_35b (Y3) SPI1_CS0.GPIO0_116 */
+            /* conflicts EQEP1_A J721E_IOPAD(0x1d4, PIN_INPUT, 7) */ /* P8_35b (Y3) SPI1_CS0.GPIO0_116 */
             /* J721E_IOPAD(0x1dc, PIN_INPUT, 7) */ /* P9_26a (Y1) SPI1_CLK.GPIO0_118 */
             /* J721E_IOPAD(0x1e0, PIN_INPUT, 7) */ /* P9_24a (Y5) SPI1_D0.GPIO0_119 */
             /* J721E_IOPAD(0x1e4, PIN_INPUT, 7) */ /* P9_18b (Y2) SPI1_D1.GPIO0_120 */
-            J721E_IOPAD(0x1f0, PIN_INPUT, 7) /* P9_42a (AC2) UART0_CTSn.GPIO0_123 */
-            J721E_IOPAD(0x1f4, PIN_INPUT, 7) /* P9_27b (AB1) UART0_RTSn.GPIO0_124 */
+            /* EQEP0_A J721E_IOPAD(0x1f0, PIN_INPUT, 7) */ /* P9_42a (AC2) UART0_CTSn.GPIO0_123 */
+            /* EQEP0_B J721E_IOPAD(0x1f4, PIN_INPUT, 7) */ /* P9_27b (AB1) UART0_RTSn.GPIO0_124 */
             /* J721E_IOPAD(0x200, PIN_INPUT, 7) */ /* P9_25a (AC4) UART1_CTSn.GPIO0_127 */
         >;
     };
@@ -158,6 +164,96 @@
     pinctrl-0 = <&P9_25_pwm>;
     status = "okay";
 };
+
+/* Add eqep devices to k3-j721e-main.dtsi, we only have to do this if a device is not in k3-j721e-main.dtsi */
+&cbass_main {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	/* Ideally these would be in k3-j721e-main.dtsi */
+    /* These are based off section taken from k3-am62-main.dtsi */
+	eqep0: qep@3200000 {
+		compatible = "ti,am62-eqep";
+		reg = <0 0x3200000 0 0x100>;
+		power-domains = <&k3_pds 94 TI_SCI_PD_EXCLUSIVE>;
+		clocks = <&k3_clks 94 0>;
+        /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
+		clock-names = "eqep0-ficlk";
+		count_mode = <0>;
+		swap_input = <0>;
+		invert_qa = <1>;
+		invert_qb = <1>;
+		invert_qi = <0>;
+		invert_qs = <0>;
+	};
+
+	eqep1: qep@3210000 {
+		compatible = "ti,am62-eqep";
+		reg = <0 0x3210000 0 0x100>;
+		power-domains = <&k3_pds 95 TI_SCI_PD_EXCLUSIVE>;
+		clocks = <&k3_clks 95 0>;
+        /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
+		clock-names = "eqep1-ficlk";
+		count_mode = <0>;
+		swap_input = <0>;
+		invert_qa = <1>;
+		invert_qb = <1>;
+		invert_qi = <0>;
+		invert_qs = <0>;
+	};
+
+    eqep2: qep@3220000 {
+		compatible = "ti,am62-eqep";
+		reg = <0 0x3210000 0 0x100>;
+		power-domains = <&k3_pds 96 TI_SCI_PD_EXCLUSIVE>;
+		clocks = <&k3_clks 96 0>;
+        /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
+		clock-names = "eqep2-ficlk";
+		count_mode = <0>;
+		swap_input = <0>;
+		invert_qa = <1>;
+		invert_qb = <1>;
+		invert_qi = <0>;
+		invert_qs = <0>;
+	};
+};
+
+&main_pmx0 {
+	eqep0_pins_default: eqep0-default-pins {
+		pinctrl-single,pins = <
+			J721E_IOPAD(0x1f0, PIN_INPUT, 5) /* (AC2) UART0_CTSn.EQEP0_A */
+			J721E_IOPAD(0x1f4, PIN_INPUT, 5) /* (AB1) UART0_RTSn.EQEP0_B */
+            J721E_IOPAD(0x4c, PIN_DISABLE, 7) /* Shares pins with EQEP0_A */
+            J721E_IOPAD(0xbc, PIN_DISABLE, 7) /* Shares pins with EQEP0_B */
+            
+		>;
+	};
+};
+
+&eqep0 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&eqep0_pins_default>;
+    status = "okay";
+};
+
+&main_pmx0 {
+	eqep1_pins_default: eqep1-default-pins {
+		pinctrl-single,pins = <
+			J721E_IOPAD(0x64, PIN_INPUT, 9) /* (AD23) PRG1_PRU1_GPO3.EQEP1_A */
+			J721E_IOPAD(0x68, PIN_INPUT, 9) /* (AH24) PRG1_PRU1_GPO4.EQEP1_B */
+            J721E_IOPAD(0x1d4, PIN_DISABLE, 7) /* Shares pin with EQEP1_A */
+            J721E_IOPAD(0x1c0, PIN_DISABLE, 7) /* Shares pin with EQEP1_B */
+		>;
+	};
+};
+
+&eqep1 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&eqep1_pins_default>;
+    status = "okay";
+};
+
+
 
 /* Taken from https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/blob/3d2ad1c69b99c5a6b52bcd35e404397fabf5dbc6/src/arm64/overlays/k3-j721e-beagleboneai64-spi-mcspi7-cs0.dtso */
 &main_pmx0 {
