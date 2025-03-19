@@ -17,6 +17,7 @@
 
 /* for eqep stuff */
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 
 /*
  * Helper to show loaded overlays under: /proc/device-tree/chosen/overlays/
@@ -169,22 +170,23 @@
 };
 
 /* Add eqep devices to k3-j721e-main.dtsi, we only have to do this if a device is not in k3-j721e-main.dtsi */
+/* grabbed from https://github.com/beagleboard/BeagleBoard-DeviceTrees/blob/100884db5ca038af3a9c56c6142aa2067662218a/src/arm64/overlays/robotics-cape.dts#L213 */
 &cbass_main {
 	#address-cells = <2>;
 	#size-cells = <2>;
 
 	/* Ideally these would be in k3-j721e-main.dtsi */
-    /* These are based off section taken from k3-am62-main.dtsi */
 	eqep0: qep@3200000 {
-        /* Linux would try to load ti-eqep-cnt driver and error out with following log:
-         * ti-eqep-cnt 3200000.qep: error -ENXIO: IRQ index 0 not found 
-         */
-		compatible = "ti,am62-eqep";
+		compatible = "ti,am3352-eqep";
 		reg = <0 0x3200000 0 0x100>;
 		power-domains = <&k3_pds 94 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 94 0>;
-        /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
 		clock-names = "eqep0-ficlk";
+		interrupt-parent = <&gic500>;
+		interrupts = <GIC_SPI 322 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "eqep0";
+		symlink = "bone/qep/0"; /* A - P9_42, B - P9_27 */
+
 		count_mode = <0>;
 		swap_input = <0>;
 		invert_qa = <1>;
@@ -194,15 +196,16 @@
 	};
 
 	eqep1: qep@3210000 {
-        /* Linux would try to load ti-eqep-cnt driver and error out with following log:
-         * ti-eqep-cnt 3210000.qep: error -ENXIO: IRQ index 0 not found 
-         */
-		compatible = "ti,am62-eqep";
+		compatible = "ti,am3352-eqep";
 		reg = <0 0x3210000 0 0x100>;
 		power-domains = <&k3_pds 95 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 95 0>;
-        /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
 		clock-names = "eqep1-ficlk";
+		interrupt-parent = <&gic500>;
+		interrupts = <GIC_SPI 323 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "eqep1";
+		symlink = "bone/qep/1"; /* A - P8_35, B - P8_33 */
+
 		count_mode = <0>;
 		swap_input = <0>;
 		invert_qa = <1>;
@@ -211,13 +214,17 @@
 		invert_qs = <0>;
 	};
 
-    eqep2: qep@3220000 {
-		compatible = "ti,am62-eqep";
+	eqep2: qep@3220000 {
+		status = "disabled";
+		compatible = "ti,am3352-eqep";
 		reg = <0 0x3220000 0 0x100>;
 		power-domains = <&k3_pds 96 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 96 0>;
-        /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
 		clock-names = "eqep2-ficlk";
+		interrupt-parent = <&gic500>;
+		interrupts = <GIC_SPI 324 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "eqep2";
+
 		count_mode = <0>;
 		swap_input = <0>;
 		invert_qa = <1>;
