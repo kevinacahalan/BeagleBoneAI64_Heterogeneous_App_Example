@@ -156,6 +156,7 @@ J721E_IOPAD(0x170, PIN_DISABLE, 7)
 | `ls /sys/devices/platform/bus@100000/`            | Devices that can now be used from linux???   |
 | `dtc -I fs /sys/firmware/devicetree/base > dt.txt`| For dt debugging                             |
 | `sudo journalctl -k`                              | View kernel logs                             |
+| `sudo dmesg`                                      | View kernel logs                             |
 
 ### Useful Links
 
