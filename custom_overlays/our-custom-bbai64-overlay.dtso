@@ -213,7 +213,7 @@
 
     eqep2: qep@3220000 {
 		compatible = "ti,am62-eqep";
-		reg = <0 0x3210000 0 0x100>;
+		reg = <0 0x3220000 0 0x100>;
 		power-domains = <&k3_pds 96 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 96 0>;
         /* interrupts = <GIC_SPI [NO IDEA WHAT NUMBER GOES HERE] IRQ_TYPE_EDGE_RISING>; */
@@ -234,7 +234,6 @@
 			J721E_IOPAD(0x1f4, PIN_INPUT, 5) /* (AB1) UART0_RTSn.EQEP0_B */
             J721E_IOPAD(0x4c, PIN_DISABLE, 7) /* Shares pins with EQEP0_A */
             J721E_IOPAD(0xbc, PIN_DISABLE, 7) /* Shares pins with EQEP0_B */
-            
 		>;
 	};
 };
