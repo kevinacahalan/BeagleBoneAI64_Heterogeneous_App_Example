@@ -172,88 +172,88 @@
 /* Add eqep devices to k3-j721e-main.dtsi, we only have to do this if a device is not in k3-j721e-main.dtsi */
 /* grabbed from https://github.com/beagleboard/BeagleBoard-DeviceTrees/blob/100884db5ca038af3a9c56c6142aa2067662218a/src/arm64/overlays/robotics-cape.dts#L213 */
 &cbass_main {
-	#address-cells = <2>;
-	#size-cells = <2>;
+    #address-cells = <2>;
+    #size-cells = <2>;
 
-	/* Ideally these would be in k3-j721e-main.dtsi */
-	eqep0: qep@3200000 {
-		compatible = "ti,am3352-eqep";
-		reg = <0 0x3200000 0 0x100>;
-		power-domains = <&k3_pds 94 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 94 0>;
-		clock-names = "eqep0-ficlk";
-		interrupt-parent = <&gic500>;
-		interrupts = <GIC_SPI 322 IRQ_TYPE_EDGE_RISING>;
-		interrupt-names = "eqep0";
-		symlink = "bone/qep/0"; /* A - P9_42, B - P9_27 */
+    /* Ideally these would be in k3-j721e-main.dtsi */
+    eqep0: qep@3200000 {
+        compatible = "ti,am3352-eqep";
+        reg = <0 0x3200000 0 0x100>;
+        power-domains = <&k3_pds 94 TI_SCI_PD_EXCLUSIVE>;
+        clocks = <&k3_clks 94 0>;
+        clock-names = "eqep0-ficlk";
+        interrupt-parent = <&gic500>;
+        interrupts = <GIC_SPI 322 IRQ_TYPE_EDGE_RISING>;
+        interrupt-names = "eqep0";
+        symlink = "bone/qep/0"; /* A - P9_42, B - P9_27 */
 
-		count_mode = <0>;
-		swap_input = <0>;
-		invert_qa = <1>;
-		invert_qb = <1>;
-		invert_qi = <0>;
-		invert_qs = <0>;
-	};
+        count_mode = <0>;
+        swap_input = <0>;
+        invert_qa = <1>;
+        invert_qb = <1>;
+        invert_qi = <0>;
+        invert_qs = <0>;
+    };
 
-	eqep1: qep@3210000 {
-		compatible = "ti,am3352-eqep";
-		reg = <0 0x3210000 0 0x100>;
-		power-domains = <&k3_pds 95 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 95 0>;
-		clock-names = "eqep1-ficlk";
-		interrupt-parent = <&gic500>;
-		interrupts = <GIC_SPI 323 IRQ_TYPE_EDGE_RISING>;
-		interrupt-names = "eqep1";
-		symlink = "bone/qep/1"; /* A - P8_35, B - P8_33 */
+    eqep1: qep@3210000 {
+        compatible = "ti,am3352-eqep";
+        reg = <0 0x3210000 0 0x100>;
+        power-domains = <&k3_pds 95 TI_SCI_PD_EXCLUSIVE>;
+        clocks = <&k3_clks 95 0>;
+        clock-names = "eqep1-ficlk";
+        interrupt-parent = <&gic500>;
+        interrupts = <GIC_SPI 323 IRQ_TYPE_EDGE_RISING>;
+        interrupt-names = "eqep1";
+        symlink = "bone/qep/1"; /* A - P8_35, B - P8_33 */
 
-		count_mode = <0>;
-		swap_input = <0>;
-		invert_qa = <1>;
-		invert_qb = <1>;
-		invert_qi = <0>;
-		invert_qs = <0>;
-	};
+        count_mode = <0>;
+        swap_input = <0>;
+        invert_qa = <1>;
+        invert_qb = <1>;
+        invert_qi = <0>;
+        invert_qs = <0>;
+    };
 
-	eqep2: qep@3220000 {
-		status = "disabled";
-		compatible = "ti,am3352-eqep";
-		reg = <0 0x3220000 0 0x100>;
-		power-domains = <&k3_pds 96 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 96 0>;
-		clock-names = "eqep2-ficlk";
-		interrupt-parent = <&gic500>;
-		interrupts = <GIC_SPI 324 IRQ_TYPE_EDGE_RISING>;
-		interrupt-names = "eqep2";
+    eqep2: qep@3220000 {
+        status = "disabled";
+        compatible = "ti,am3352-eqep";
+        reg = <0 0x3220000 0 0x100>;
+        power-domains = <&k3_pds 96 TI_SCI_PD_EXCLUSIVE>;
+        clocks = <&k3_clks 96 0>;
+        clock-names = "eqep2-ficlk";
+        interrupt-parent = <&gic500>;
+        interrupts = <GIC_SPI 324 IRQ_TYPE_EDGE_RISING>;
+        interrupt-names = "eqep2";
 
-		count_mode = <0>;
-		swap_input = <0>;
-		invert_qa = <1>;
-		invert_qb = <1>;
-		invert_qi = <0>;
-		invert_qs = <0>;
-	};
+        count_mode = <0>;
+        swap_input = <0>;
+        invert_qa = <1>;
+        invert_qb = <1>;
+        invert_qi = <0>;
+        invert_qs = <0>;
+    };
 };
 
 &main_pmx0 {
-	eqep0_pins: eqep0-pins {
-		pinctrl-single,pins = <
-			J721E_IOPAD(0x1f0, PIN_INPUT, 5) /* (AC2) UART0_CTSn.EQEP0_A */
-			J721E_IOPAD(0x1f4, PIN_INPUT, 5) /* (AB1) UART0_RTSn.EQEP0_B */
+    eqep0_pins: eqep0-pins {
+        pinctrl-single,pins = <
+            J721E_IOPAD(0x1f0, PIN_INPUT, 5) /* (AC2) UART0_CTSn.EQEP0_A */
+            J721E_IOPAD(0x1f4, PIN_INPUT, 5) /* (AB1) UART0_RTSn.EQEP0_B */
             J721E_IOPAD(0x4c, PIN_DISABLE, 7) /* Shares pins with EQEP0_A */
             J721E_IOPAD(0xbc, PIN_DISABLE, 7) /* Shares pins with EQEP0_B */
-		>;
-	};
+        >;
+    };
 };
 
 &main_pmx0 {
-	eqep1_pins: eqep1-pins {
-		pinctrl-single,pins = <
-			J721E_IOPAD(0x64, PIN_INPUT, 9) /* (AD23) PRG1_PRU1_GPO3.EQEP1_A */
-			J721E_IOPAD(0x68, PIN_INPUT, 9) /* (AH24) PRG1_PRU1_GPO4.EQEP1_B */
+    eqep1_pins: eqep1-pins {
+        pinctrl-single,pins = <
+            J721E_IOPAD(0x64, PIN_INPUT, 9) /* (AD23) PRG1_PRU1_GPO3.EQEP1_A */
+            J721E_IOPAD(0x68, PIN_INPUT, 9) /* (AH24) PRG1_PRU1_GPO4.EQEP1_B */
             J721E_IOPAD(0x1d4, PIN_DISABLE, 7) /* Shares pin with EQEP1_A */
             J721E_IOPAD(0x1c0, PIN_DISABLE, 7) /* Shares pin with EQEP1_B */
-		>;
-	};
+        >;
+    };
 };
 
 &eqep0 {
