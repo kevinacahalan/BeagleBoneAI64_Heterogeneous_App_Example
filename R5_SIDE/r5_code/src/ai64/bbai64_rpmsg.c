@@ -168,64 +168,7 @@ volatile uint32_t gMessagesReceived = 0;
 
 // #define DEBUG_PRINT
 
-int function_a(int a, int b) {
-    printf("%s: Adding %d + %d inside R5 called from linux\n", Ipc_mpGetSelfName(), a, b);
-    return a + b;
-}
 
-float function_b(float a, float b, float c) {
-    printf("%s: Adding %f + %f + %f inside R5 called from linux\n", Ipc_mpGetSelfName(), a, b, c);
-    return a + b + c;
-}
-
-// returns IPC_ETIMEOUT on no message, otherwise returns other stuff
-int process_one_rproc_message(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt, uint32_t *remoteEndPt, uint32_t *remoteProcId) {
-    int32_t status = 0;
-    uint16_t rxLen = 0;
-    request_tagged_union_t req;
-    /* Wait for a new message */
-
-    /* Expect the incoming message to be an request_tagged_union_t */
-    rxLen = sizeof(request_tagged_union_t);
-    // If I make this a RPMessage_recv with a timeout of 0, some messages are double processed...
-    status = RPMessage_recvNb(*handle_chrdev, (Ptr)&req, &rxLen, remoteEndPt, remoteProcId);
-    if (status != IPC_SOK)
-    {
-        // Will return here if there is no message
-        return status; // much of the time returns IPC_ETIMEOUT..(error -4 for no message)
-    }
-
-    if (rxLen != sizeof(request_tagged_union_t))
-    {
-        printf("%s: Unexpected message size: %u bytes\n", Ipc_mpGetSelfName(), rxLen);
-        return 1333;
-    }
-
-    // Figure out which function to call
-    switch (req.tag)
-    {
-    case FUNCTION_A:
-        int result = function_a(req.function_a.a, req.function_a.b);
-        status = RPMessage_send(*handle_chrdev, *remoteProcId, *remoteEndPt, *myEndPt, &result, sizeof(result));
-        break;
-    case FUNCTION_B:
-        float f_result = function_b(req.function_b.a, req.function_b.b, req.function_b.c);
-        status = RPMessage_send(*handle_chrdev, *remoteProcId, *remoteEndPt, *myEndPt, &f_result, sizeof(f_result));
-        break;
-
-    default:
-        printf("Unknown req.tag %d\b", req.tag);
-        return 55;
-        break;
-    }
-
-    if (status != IPC_SOK)
-    {
-        printf("%s: Failed to send result, error: %ld\n", Ipc_mpGetSelfName(), status);
-    }
-
-    return 0;
-}
 
 /*
  * This function is the callback function the ipc lld library calls when a
