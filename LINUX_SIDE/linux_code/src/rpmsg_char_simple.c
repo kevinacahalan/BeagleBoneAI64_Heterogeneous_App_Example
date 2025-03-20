@@ -27,8 +27,8 @@
 #include <linux/rpmsg.h>
 
 
-#include "../../include/rpmsg_char/ti_rpmsg_char.h"
-#include "../../include/rpmsg_char/rpmsg_char_simple.h"
+#include <ti_rpmsg_char.h>
+#include <rpmsg_char_simple.h>
 
 #define REMOTE_ENDPT 14
 
