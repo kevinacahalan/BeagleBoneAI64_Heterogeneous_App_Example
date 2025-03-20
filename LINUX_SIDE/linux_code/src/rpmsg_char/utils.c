@@ -149,14 +149,14 @@ char *file_deref_link(char *fpath, char *link_name)
 	char rel_path[256] = { 0 };
 	int n, nr;
 
-	n = snprintf(path, 256, "%s/%s", fpath, link_name);
-	if (n < 0 || n >= 256) {
+	n = snprintf(path, 255, "%s/%s", fpath, link_name);
+	if (n < 0 || n >= 255) {
 		fprintf(stderr, "%s: could not create full path string\n",
 			__func__);
 		return NULL;
 	}
 
-	nr = readlink(path, rel_path, sizeof(rel_path));
+	nr = readlink(path, rel_path, sizeof(rel_path) - 1);
 	if (nr < 0) {
 		fprintf(stderr, "%s: readlink failed for %s\n", __func__, path);
 		return NULL;
