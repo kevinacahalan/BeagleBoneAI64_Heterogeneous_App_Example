@@ -1,13 +1,3 @@
-/*
- * rpmsg_char_simple.c
- *
- * Simple Example application using rpmsg-char library for RPC.
- * The Linux side sends an addition request (2 ints) to the R5,
- * which adds them and returns the result.
- *
- *  (License text omitted for brevity)
- */
-
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -30,35 +20,7 @@
 #include <ti_rpmsg_char.h>
 #include <rpmsg_char_simple.h>
 
-#define REMOTE_ENDPT 14
-
-/* Structure for the addition request (must match baremetal) */
-// typedef struct {
-//     int a;
-//     int b;
-// } addition_request_t;
-
-typedef enum
-{
-    UNKNOWN = 0,
-    FUNCTION_A = 1,
-    FUNCTION_B = 2,
-} FUNCTION_TAG;
-
-typedef struct {
-    FUNCTION_TAG tag;
-    union {
-        struct {
-            int a;
-            int b;
-        } function_a;  // Named member for FUNCTION_A arguments
-        struct {
-            float a;
-            float b;
-            float c;
-        } function_b;  // Named member for FUNCTION_B arguments
-    };
-} request_tagged_union_t;
+#include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
 static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev);
 
@@ -182,7 +144,7 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
     int flags = 0;
 
     /* Create a unique endpoint name */
-    snprintf(eptdev_name, sizeof(eptdev_name), "rpmsg-char-%d-%d", rproc_id, getpid());
+    snprintf(eptdev_name, sizeof(eptdev_name), "eptdev_name_rpmsg-char-%d-%d", rproc_id, getpid());
 
     /* Open the rpmsg-char device */
     rcdev = rpmsg_char_open(rproc_id, dev_name, local_endpt, remote_endpt, eptdev_name, flags);
@@ -223,10 +185,10 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
 int rpmsg_char_simple_main(void)
 {
     int ret, status;
-    int rproc_id = 2;
+    int rproc_id = R5F_MAIN0_0; // 2, THIS IS HOW LINUX KNOWS WHICH R5 TO TALK TO!!
     unsigned int local_endpt = RPMSG_ADDR_ANY;
-    unsigned int remote_endpt = REMOTE_ENDPT;
-    char *dev_name = NULL;  /* Auto-detect if supported */
+    unsigned int remote_endpt = RPMSG_CHAR_ENDPOINT; // 14
+    char *dev_name = RPMSG_CHAR_DEVICE_NAME; // "rpmsg_chrdev"
 
     ret = rpmsg_char_init(NULL);
     if (ret)

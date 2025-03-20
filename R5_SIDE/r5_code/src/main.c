@@ -22,14 +22,14 @@ volatile int wait_for_debugger = 0;
  *       Only the receiver function does a echo back of incoming messages
  */
 /* ==========================================*/
-int32_t Ipc_echo_test(void)
+int32_t start_listing_to_linux(void)
 {
     uint32_t myEndPt = 0, remoteEndPt = 0, remoteProcId = 0;
     RPMessage_Handle handle_chrdev;
     setup_ipc(&handle_chrdev, &myEndPt);
     /* run responder function to receive and reply messages back */
 
-    printf("Inside Ipc_echo_test waiting for messages from linux\n");
+    printf("Inside start_listing_to_linux() waiting for messages\n");
     for (size_t i = 0;; i++)
     {   
         Osal_delay(1000); // 1 second 
@@ -71,8 +71,8 @@ int main()
     printf("Done SPI7 test\n");
     Osal_delay(1000);
 
-    printf("About to do IPC test");
-    Ipc_echo_test();
+    printf("About to do IPC test\n");
+    start_listing_to_linux();
     
 
     while(wait_for_debugger == 1)

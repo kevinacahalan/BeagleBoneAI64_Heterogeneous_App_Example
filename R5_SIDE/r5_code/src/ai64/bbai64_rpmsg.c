@@ -58,6 +58,7 @@
 // #include <ti/drv/ipc/examples/common/src/ipc_rsctable.h> // We are using our own from setup.c
 #include "../include/setup.h" // For ipc rsctable
 
+#include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
 
 #if defined (SOC_J721E)
@@ -155,43 +156,9 @@ uint32_t *pEndptArray = gEndptArray;
 #define MSGSIZE 256U
 
 /* Service name to be registered for chrdev end point */
-#define SERVICE_CHRDEV "rpmsg_chrdev"
+#define SERVICE_CHRDEV RPMSG_CHAR_DEVICE_NAME
 /* End point number to be used for chrdev end point */
-#define ENDPT_CHRDEV 14U
-
-typedef struct Ipc_TestParams_s
-{
-    uint32_t endPt;
-    char name[32];
-} Ipc_TestParams;
-
-typedef enum
-{
-    UNKNOWN = 0,
-    FUNCTION_A = 1,
-    FUNCTION_B = 2,
-} FUNCTION_TAG;
-
-typedef struct
-{
-    FUNCTION_TAG tag;
-    union
-    {
-        struct
-        {
-            int a;
-            int b;
-        } function_a; // function_a(int a, int b)
-        struct
-        {
-            float a;
-            float b;
-            float c;
-        } function_b; // function_b(float a, float b, float c)
-    };
-} request_tagged_union_t;
-
-Ipc_TestParams service_chrdev = {ENDPT_CHRDEV, SERVICE_CHRDEV};
+#define ENDPT_CHRDEV RPMSG_CHAR_ENDPOINT
 
 uint32_t gRecvTaskBufIdx = 0;
 
@@ -309,10 +276,12 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
         {
             return -1;
         }
+    }else{
+        printf("NOT GOOD: %s:%d\r\n", __FILE__, __LINE__);
     }
 #ifdef DEBUG_PRINT
     printf("Required Local memory for Virtio_Object = %ld\r\n",
-           numProc * Ipc_getVqObjMemoryRequiredPerCore());
+           gNumRemoteProc * Ipc_getVqObjMemoryRequiredPerCore());
 #endif
 
     Ipc_loadResourceTable((void *)&ti_ipc_remoteproc_ResourceTable);
@@ -387,6 +356,8 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
     {
         printf("%s: RPMessage_announce() for %s failed\n", Ipc_mpGetSelfName(), SERVICE_CHRDEV);
         return -1;
+    }else{
+        printf("%s: RPMessage_announce() for %s WORKED!\n", Ipc_mpGetSelfName(), SERVICE_CHRDEV);
     }
 
     return 0;
