@@ -325,13 +325,12 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
 
     // EVERYTHING BELOW HERE SHOULD MAYBE ME IN IT"S OWN FUNCTION
 
-    RPMessage_Params params;
+    
 
     int32_t status = 0;
-    void *buf = NULL;
-    uint32_t bufSize = rpmsgDataSize;
 
     /* Allocate a buffer for receiving the message */
+    void *buf = NULL;
     buf = &pRecvTaskBuf[gRecvTaskBufIdx++ * rpmsgDataSize];
     if (buf == NULL)
     {
@@ -339,10 +338,11 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
         return -1;
     }
 
+    RPMessage_Params params;
     RPMessageParams_init(&params);
     params.requestedEndpt = ENDPT_CHRDEV;
     params.buf = buf;
-    params.bufSize = bufSize;
+    params.bufSize = rpmsgDataSize;
 
     *handle_chrdev = RPMessage_create(&params, myEndPt);
     if (!(*handle_chrdev))
