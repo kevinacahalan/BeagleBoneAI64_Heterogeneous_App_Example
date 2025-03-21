@@ -104,6 +104,7 @@ void bitbang_spi_send_array(uint8_t *data, size_t length) {
 // I got bit banged SPI running at around 2.5Mhz, going higher gets flaky. Playing with
 // the delay loops could possibly squeeze out a slightly higher clock
 void test_bitbang_spi() {
+    printf("Bitbang spi test, MOSI=P8_09, SCLK=P8_08, CS=P8_06\n");
     bitbang_spi_init();
     
     uint8_t data[] = {0xaa,0x55,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x55,0xaa};

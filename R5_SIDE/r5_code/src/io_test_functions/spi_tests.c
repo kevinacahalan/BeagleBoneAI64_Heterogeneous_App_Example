@@ -261,8 +261,8 @@ void test_spi_mcpsi6(const uint32_t channel_number)
 // RX:  P9_29
 void test_spi_mcspi7(const uint32_t channel_number)
 {
-    printf("Testing mcspi7 100 32bit transfers at 48MHz in format 0x555555[NN], NN is transfer counter\n");
-    printf("Connect logic analyzer to pins P9_28(cs), P9_31(clk), and P9_30(MOSI)\n");
+    // printf("Testing mcspi7 100 32bit transfers at 48MHz in format 0x555555[NN], NN is transfer counter\n");
+    printf("MCSPI7, connect logic analyzer to pins P9_28(cs), P9_31(clk), and P9_30(MOSI)\n");
     const uint32_t mcspi_in_clock = 48000000;
     const uint32_t mcspi_out_freq = 10000000;
 
