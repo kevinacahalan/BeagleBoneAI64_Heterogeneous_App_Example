@@ -16,19 +16,23 @@
 #include <io_test_functions/gpio_tests.h>
 #include <io_test_functions/epwm_tests.h>
 #include <io_test_functions/spi_tests.h>
+#include <io_test_functions/eqep_tests.h>
 
 volatile int wait_for_debugger = 0;
 
 
 void do_other_random_things() {
-    printf("Inside do_other_random_things()\n");
+    printf("\n> Inside do_other_random_things()\n");
 
     // PIN_MOSI=P8_09, PIN_SCLK=P8_08, PIN_CS=P8_06
-    printf("Bitbang spi test MOSI=P8_09, SCLK=P8_08, CS=P8_06\n");
     test_bitbang_spi();
 
-    printf("Sending gunk out SPI7\n");
     test_spi_mcspi7(0);
+
+    test_eqep1_with_gpio_encoder_simulation();
+
+    printf("Flashing LED on P9_25\n");
+    run_pwm_test(5);
 }
 
 
