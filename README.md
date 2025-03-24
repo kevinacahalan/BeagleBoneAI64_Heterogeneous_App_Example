@@ -6,8 +6,8 @@ This example was built off of Fred Eckert's example: https://github.com/FredEcke
 
 Example shows:
 1. Initialization of a remote-proc resource table with a working trace log.
-2. Initialization of FPU.
-3. Initialization of the MPU and cache to run code from DDR memory.
+2. Initialization of FPU for R5 core.
+3. Initialization of the MPU and cache to run R5 code from DDR memory.
 4. Use of TI SDK/SDK exceptions and interrupt handlers.
 5. Use of EHRPWM module from R5 core to generate PWM signal for flashing LED on pin P9_25.
 6. Rpmsg talking...Linux calling simple math functions in R5.
