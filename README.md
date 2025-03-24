@@ -5,14 +5,14 @@ For this example to work, use beagle firmware with kernel 6.12. Make to to have 
 This example was built off of Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
 Example shows:
-1. How to initialize a remoteproc resource table with a working trace log.
-2. How to setup boot code to enable the FPU.
-3. How to initialize the MPU and cache to run code from DDR memory.
-4. How to setup handlers to deal with interrupts.
-5. EPWM flashing LED on pin P9_25 for  seconds.
+1. Initialization of a remote-proc resource table with a working trace log.
+2. Initialization of FPU.
+3. Initialization of the MPU and cache to run code from DDR memory.
+4. Use of TI SDK/SDK exceptions and interrupt handlers.
+5. Use of EHRPWM module from R5 core to generate PWM signal for flashing LED on pin P9_25.
 6. Rpmsg talking...Linux calling simple math functions in R5.
-7. SPI7 transfers, pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
-8. EQEP quadrature encoder reading on EQEP_1.
+7. Use of McSPI from R5 core to do SPI7 transfers on pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
+8. Reading of EQEP quadrature encoder EQEP_1 from R5 core.
 9. GPIO from R5, (shown with quadrature encoder simulation, and shown with bit-banged spi example).
 
 Planned:
