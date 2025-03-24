@@ -38,6 +38,7 @@ If anybody wants to contribute random stuff, please do.
 8. Power cycle the board several times
 9. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
 10. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
+11. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
 
 
 
