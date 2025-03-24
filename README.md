@@ -12,15 +12,15 @@ Example shows:
 5. EPWM flashing LED on pin P9_25 for  seconds.
 6. Rpmsg talking...Linux calling simple math functions in R5.
 7. SPI7 transfers, pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
+8. EQEP quadrature encoder reading on EQEP_1.
+9. GPIO from R5, (shown with quadrature encoder simulation, and shown with bit-banged spi example).
 
 Planned:
 1. Shared memory between Linux and R5
-2. EQEP encoder reading
-3. GPIO from linux
-4. GPIO from R5
-5. SPI from linux
-7. UART from linux
-8. UART from R5
+2. GPIO from linux
+3. SPI from linux
+4. UART from linux
+5. UART from R5
 
 
 If anybody wants to contribute random stuff, please do.
@@ -39,6 +39,7 @@ If anybody wants to contribute random stuff, please do.
 9. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
 10. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
 11. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
+12. Connect loop jumper wires P8_33<-->P8_34 and P8_35<-->P8-36 for EQEP_1 test.
 
 
 

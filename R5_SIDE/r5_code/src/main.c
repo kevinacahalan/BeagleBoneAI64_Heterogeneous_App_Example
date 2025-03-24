@@ -23,15 +23,6 @@ volatile int wait_for_debugger = 0;
 
 void do_other_random_things() {
     printf("\n> Inside do_other_random_things()\n");
-
-    // PIN_MOSI=P8_09, PIN_SCLK=P8_08, PIN_CS=P8_06
-    test_bitbang_spi();
-
-    test_spi_mcspi7(0);
-
-    test_eqep1_with_gpio_encoder_simulation();
-
-    printf("Flashing LED on P9_25\n");
     run_pwm_test(5);
 }
 
@@ -133,19 +124,16 @@ int32_t start_listing_to_linux(void)
 int main()
 {   
     printf("R5_SIDE started from main\n");
-    run_pwm_test(20);
 
-    int count = 2;
-    for (int i = 1; i <= count; i++)
-    {
-        Osal_delay(1000);
-        printf("print from R5 %d/%d\n", i, count);
-    }
+    // PIN_MOSI=P8_09, PIN_SCLK=P8_08, PIN_CS=P8_06
+    test_bitbang_spi();
 
-    // output some 
-    Osal_delay(1000);
+    test_spi_mcspi7(0);
 
-    printf("About to start listing to linux\n");
+    test_eqep1_with_gpio_encoder_simulation();
+
+
+    printf("\nAbout to start listing to linux\n");
     start_listing_to_linux();
     
 

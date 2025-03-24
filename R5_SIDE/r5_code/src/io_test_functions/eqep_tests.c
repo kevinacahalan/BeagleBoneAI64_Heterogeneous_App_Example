@@ -72,50 +72,40 @@ void test_eqep1_with_gpio_encoder_simulation() {
     // Setup simulation pins and reset EQEP.
     reset_eqep_and_simulation_io();
     
-    int sum = 0;
     int expected_sum = 0;
     int requested = 0;
-    int actual = 0;
     int current = eqep_get_position(EQEP1_P8_35_P8_33);
 
-    // Get initial position
-    int initial_position = current;
-    printf("EQEP counter initial position: %d\n", initial_position);
-    
     requested = 100;
     expected_sum += requested;
     simulate_encoder_ticks(requested, 1);
     current = eqep_get_position(EQEP1_P8_35_P8_33);
-    printf("EQEP: requested = %d, actual = %d, current_pos = %d, sum_of_actual = %d, expected_sum = %d\n", requested, actual, current, sum, expected_sum);
 
     requested = -100;
     expected_sum += requested;
     simulate_encoder_ticks(requested, 1);
     current = eqep_get_position(EQEP1_P8_35_P8_33);
-    printf("EQEP: requested = %d, actual = %d, current_pos = %d, sum_of_actual = %d, expected_sum = %d\n", requested, actual, current, sum, expected_sum);
 
     requested = -100;
     expected_sum += requested;
     simulate_encoder_ticks(requested, 1);
     current = eqep_get_position(EQEP1_P8_35_P8_33);
-    printf("EQEP: requested = %d, actual = %d, current_pos = %d, sum_of_actual = %d, expected_sum = %d\n", requested, actual, current, sum, expected_sum);
 
     requested = 500;
     expected_sum += requested;
     simulate_encoder_ticks(requested, 1);
     current = eqep_get_position(EQEP1_P8_35_P8_33);
-    printf("EQEP: requested = %d, actual = %d, current_pos = %d, sum_of_actual = %d, expected_sum = %d\n", requested, actual, current, sum, expected_sum);
 
 
     Osal_delay(100);
 
     // Print expected final position
-    printf("Expected final position: %d\n", expected_sum);
+    // printf("Expected final position: %d\n", expected_sum);
     
     if (current == expected_sum) {
-        printf("Test PASSED: Final position matches expected value\n");
+        printf("EQEP: Test PASSED: Final position matches expected value\n");
     } else {
-        printf("Test FAILED: Final position %d doesn't match expected %d\n", current, expected_sum);
-        printf("MAKE SURE to connect LOOP jumper wires P8_33<-->P8_34 and P8_35<-->P8-36\n");
+        printf("EQEP: Test FAILED: Final position %d doesn't match expected %d\n", current, expected_sum);
+        printf("EQEP: MAKE SURE to connect LOOP jumper wires P8_33<-->P8_34 and P8_35<-->P8-36\n");
     }
 }

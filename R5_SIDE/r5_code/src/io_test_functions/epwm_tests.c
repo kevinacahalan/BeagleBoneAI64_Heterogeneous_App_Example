@@ -121,7 +121,7 @@ void test_epwm4b_csl_layer()
 // Make sure to load our custom device tree overlay that mux's out PWM. You can check if ehrpwm4_b is
 // muxed to P9-25 using the showpins.pl script
 void run_pwm_test(int n) {
-    printf("Doing an EPWM test on P9_25...Flashing an LED\n");
+    printf("Doing an EPWM test on P9_25...Flashing an LED");
     pwm_init(P9_25b_EHRPWM4_B);
     pwm_stop(P9_25b_EHRPWM4_B);
 
@@ -135,5 +135,5 @@ void run_pwm_test(int n) {
     }
 
     pwm_deinit(P9_25b_EHRPWM4_B);
-    printf("Done PWM test\n");
+    printf("...Done PWM test\n");
 }

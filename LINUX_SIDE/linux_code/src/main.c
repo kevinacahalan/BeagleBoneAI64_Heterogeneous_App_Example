@@ -11,12 +11,6 @@ int main(int argc, char **argv)
     
     printf("Test print from linux\n");
 
-    int count = 10;
-    for (int i = 1; i <= count; i++)
-    {
-        sleep(1);
-        printf("print from linux %d/%d\n", i, count);
-    }
     
     rpmsg_char_simple_main();
 
