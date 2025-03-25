@@ -174,9 +174,11 @@
             J721E_IOPAD(0xe8, PIN_INPUT, 8) /* P9_37B (AG28) PRG0_PRU0_GPO14.UART4_RXD */
             J721E_IOPAD(0xec, PIN_OUTPUT, 8) /* P9_38B (AG27) PRG0_PRU0_GPO15.UART4_TXD */
 
-            /* Disable alt pads */
-            J721E_WKUP_IOPAD(0x138, PIN_DISABLE, 7) /* P9_37A (K28) */
-            J721E_WKUP_IOPAD(0x13C, PIN_DISABLE, 7) /* P9_38A (L28) */
+            /* From some wack reason these pad disables fight with i2c2 
+             * https://forum.beagleboard.org/t/bbai64-debian-12-9-kernel-6-12-main-uart4-fights-with-main-i2c2-muxing/41632
+             */
+            /* J721E_WKUP_IOPAD(0x138, PIN_DISABLE, 7) */ /* P9_37A (K28) */
+            /* J721E_WKUP_IOPAD(0x13C, PIN_DISABLE, 7) */ /* P9_38A (L28) */
         >;
     };
 // old 5.10 muxing that needs to be converted
