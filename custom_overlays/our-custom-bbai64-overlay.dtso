@@ -4,6 +4,11 @@
  *
  * Copyright (C) 2023 Texas Instruments Incorporated - https://www.ti.com/
  *
+ * Resources to figure out pin muxing
+ * https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view?pli=1
+ * https://www.ti.com/tool/download/SYSCONFIG
+ * https://www.ti.com/lit/ds/symlink/tda4vm.pdf?ts=1741890214437&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTDA4VM
+ *
  */
 
 /dts-v1/;
@@ -81,8 +86,8 @@
             J721E_IOPAD(0xdc, PIN_INPUT, 7) /* P9_39b (AJ28) PRG0_PRU0_GPO11.GPIO0_54 */
             J721E_IOPAD(0xe0, PIN_INPUT, 7) /* P9_35b (AH27) PRG0_PRU0_GPO12.GPIO0_55 */
             J721E_IOPAD(0xe4, PIN_INPUT, 7) /* P9_36b (AH29) PRG0_PRU0_GPO13.GPIO0_56 */
-            J721E_IOPAD(0xe8, PIN_INPUT, 7) /* P9_37b (AG28) PRG0_PRU0_GPO14.GPIO0_57 */
-            J721E_IOPAD(0xec, PIN_INPUT, 7) /* P9_38b (AG27) PRG0_PRU0_GPO15.GPIO0_58 */
+            /* UART4_RX J721E_IOPAD(0xe8, PIN_INPUT, 7) */ /* P9_37b (AG28) PRG0_PRU0_GPO14.GPIO0_57 */
+            /* UART4_TX J721E_IOPAD(0xec, PIN_INPUT, 7) */ /* P9_38b (AG27) PRG0_PRU0_GPO15.GPIO0_58 */
             J721E_IOPAD(0xf0, PIN_INPUT, 7) /* P8_12 (AH28) PRG0_PRU0_GPO16.GPIO0_59 */
             J721E_IOPAD(0xf4, PIN_INPUT, 7) /* P8_11 (AB24) PRG0_PRU0_GPO17.GPIO0_60 */
             J721E_IOPAD(0xf8, PIN_INPUT, 7) /* P8_15 (AB29) PRG0_PRU0_GPO18.GPIO0_61 */
@@ -96,8 +101,8 @@
             J721E_IOPAD(0x118, PIN_INPUT, 7) /* P8_39 (AC26) PRG0_PRU1_GPO6.GPIO0_69 */
             J721E_IOPAD(0x11c, PIN_INPUT, 7) /* P8_40 (AA24) PRG0_PRU1_GPO7.GPIO0_70 */
             J721E_IOPAD(0x120, PIN_INPUT, 7) /* P8_27 (AA28) PRG0_PRU1_GPO8.GPIO0_71 */
-            J721E_IOPAD(0x124, PIN_INPUT, 7) /* P8_28 (Y24) PRG0_PRU1_GPO9.GPIO0_72 */
-            J721E_IOPAD(0x128, PIN_INPUT, 7) /* P8_29 (AA25) PRG0_PRU1_GPO10.GPIO0_73 */
+            /* UART8_RX J721E_IOPAD(0x124, PIN_INPUT, 7) */ /* P8_28 (Y24) PRG0_PRU1_GPO9.GPIO0_72 */
+            /* UART8_TX J721E_IOPAD(0x128, PIN_INPUT, 7) */ /* P8_29 (AA25) PRG0_PRU1_GPO10.GPIO0_73 */
             J721E_IOPAD(0x12c, PIN_INPUT, 7) /* P8_30 (AG26) PRG0_PRU1_GPO11.GPIO0_74 */
             J721E_IOPAD(0x130, PIN_INPUT, 7) /* P8_14 (AF27) PRG0_PRU1_GPO12.GPIO0_75 */
             J721E_IOPAD(0x134, PIN_INPUT, 7) /* P8_20 (AF26) PRG0_PRU1_GPO13.GPIO0_76 */
@@ -110,8 +115,8 @@
             J721E_IOPAD(0x168, PIN_INPUT, 7) /* P8_13 (V27) RGMII5_TD1.GPIO0_89 */
             J721E_IOPAD(0x16c, PIN_INPUT, 7) /* P9_21b (U28) RGMII5_TD0.GPIO0_90 */
             J721E_IOPAD(0x170, PIN_INPUT, 7) /* P9_22b (U29) RGMII5_TXC.GPIO0_91 */
-            J721E_IOPAD(0x178, PIN_INPUT, 7) /* P9_14 (U27) RGMII5_RD3.GPIO0_93 */
-            J721E_IOPAD(0x17c, PIN_INPUT, 7) /* P9_16 (U24) RGMII5_RD2.GPIO0_94 */
+            /* UART6_RX J721E_IOPAD(0x178, PIN_INPUT, 7) */ /* P9_14 (U27) RGMII5_RD3.GPIO0_93 */
+            /* UART6_TX J721E_IOPAD(0x17c, PIN_INPUT, 7) */ /* P9_16 (U24) RGMII5_RD2.GPIO0_94 */
             /* J721E_IOPAD(0x1a4, PIN_INPUT, 7) */ /* P9_25b (W26) RGMII6_RXC.GPIO0_104 */
             J721E_IOPAD(0x1a8, PIN_INPUT, 7) /* P8_38a (Y29) RGMII6_RD3.GPIO0_105 */
             J721E_IOPAD(0x1ac, PIN_INPUT, 7) /* P8_37a (Y27) RGMII6_RD2.GPIO0_106 */
@@ -149,6 +154,89 @@
 &main_gpio1 {
     pinctrl-names = "default";
     pinctrl-0 = <&gpio1_pins_default>;
+    status = "okay";
+};
+
+
+
+&main_pmx0 {
+    // old 5.10 muxing that needs to be converted
+    // uartx5_2_pins_default: uartx5_2-pins-default {
+    //     pinctrl-single,pins = <
+    //         P9_24A(PIN_OUTPUT, 3) /* UART2 TX */
+    //         P9_26A(PIN_INPUT, 3)  /* UART2 RX */
+    //         P9_24B(PIN_INPUT, 7)
+    //         P9_26B(PIN_INPUT, 7)
+    //     >;
+    // };
+    uartx5_4_pins_default: uartx5_4-pins-default {
+        pinctrl-single,pins = <
+            J721E_IOPAD(0xe8, PIN_INPUT, 8) /* P9_37B (AG28) PRG0_PRU0_GPO14.UART4_RXD */
+            J721E_IOPAD(0xec, PIN_OUTPUT, 8) /* P9_38B (AG27) PRG0_PRU0_GPO15.UART4_TXD */
+
+            /* Disable alt pads */
+            J721E_WKUP_IOPAD(0x138, PIN_DISABLE, 7) /* P9_37A (K28) */
+            J721E_WKUP_IOPAD(0x13C, PIN_DISABLE, 7) /* P9_38A (L28) */
+        >;
+    };
+// old 5.10 muxing that needs to be converted
+//    uartx5_5_pins_default: uartx5_5-pins-default {
+//        pinctrl-single,pins = <
+//            P8_31B(PIN_INPUT, 14)  /* UART5 RX */
+//            P8_37A(PIN_OUTPUT, 3)  /* UART5 TX */
+//            P8_31A(PIN_INPUT, 7)
+//            P8_37B(PIN_INPUT, 7)
+//        >;
+//    };
+    uartx5_6_pins_default: uartx5_6-pins-default {
+        pinctrl-single,pins = <
+    		J721E_IOPAD(0x178, PIN_INPUT, 3) /* P9_14 (U27) RGMII5_RD3.UART6_RXD */
+			J721E_IOPAD(0x17c, PIN_OUTPUT, 3) /* P9_16 (U24) RGMII5_RD2.UART6_TXD */
+        >;
+    };
+    uartx5_8_pins_default: uartx5_8-pins-default {
+        pinctrl-single,pins = <
+            J721E_IOPAD(0x124, PIN_INPUT, 14) /* P8_28 (Y24) PRG0_PRU1_GPO9.UART8_RXD */
+			J721E_IOPAD(0x128, PIN_OUTPUT, 14) /* P8_29 (AA25) PRG0_PRU1_GPO10.UART8_TXD */
+        >;
+    };
+};
+
+// https://elinux.org/Beagleboard:BeagleBone_cape_interface_spec#UART (the symlinks at this link are different from our custom symlinks that make more sense)
+
+// P9_24 and P9_26 (pins used by bone_i2c_3)
+//&main_uart2 {
+//    pinctrl-names = "default";
+//    pinctrl-0 = <&uartx5_2_pins_default>;
+//    symlink = "bone/uart/2";
+//    status = "okay";
+//};
+
+&main_uart4 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&uartx5_4_pins_default>;
+    symlink = "bone/uart/4";
+    status = "okay";
+};
+
+//&main_uart5 {
+//    pinctrl-names = "default";
+//    pinctrl-0 = <&uartx5_5_pins_default>;
+//    symlink = "bone/uart/5";
+//    status = "okay";
+//};
+
+&main_uart6 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&uartx5_6_pins_default>;
+    symlink = "bone/uart/6";
+    status = "okay";
+};
+
+&main_uart8 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&uartx5_8_pins_default>;
+    symlink = "bone/uart/8";
     status = "okay";
 };
 
