@@ -304,3 +304,21 @@
         spi-max-frequency = <125000000>;
     };
 };
+
+&reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+    shared_memory_r5f_linux: buffer@90000000 {
+        compatible = "shared-dma-pool";
+        reg = <0x0 0x90000000 0x0 0x01000000>; /* 16 MB region, gap found with `sudo cat /proc/iomem` */
+        no-map;
+        status = "okay";
+    };
+};
+
+&main_r5fss0 {
+	memory-region = <&main_r5fss0_core0_dma_memory_region>,
+			<&main_r5fss0_core0_memory_region>,
+            <&shared_memory_r5f_linux>;
+};
