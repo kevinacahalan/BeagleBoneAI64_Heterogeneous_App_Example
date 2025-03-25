@@ -143,8 +143,17 @@ pad U29. Using the same process as walked through with pad AC22, you get the fol
 `J721E_IOPAD(0x170, PIN_DISABLE, 7)`
 
 So to mux SPI6_CLK on BB pin P9_22:
-J721E_IOPAD(0x9c, PIN_OUTPUT, 4)
-J721E_IOPAD(0x170, PIN_DISABLE, 7)
+```c
+&main_pmx0 {
+    whatever_name_you_feel: and-so-on-pins {
+        pinctrl-single,pins = <
+            J721E_IOPAD(0x9c, PIN_OUTPUT, 4) /* AC22, aka P9_22a */
+            J721E_IOPAD(0x170, PIN_DISABLE, 7) /* U29, aka P9_22b */
+            /* And so on for other pins... */
+        >;
+    };
+};
+```
 
 **Side Note: You can use TI SysConfig for Pin Muxing**
 
