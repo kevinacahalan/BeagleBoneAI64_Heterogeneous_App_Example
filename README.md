@@ -157,9 +157,11 @@ So to mux SPI6_CLK on BB pin P9_22:
 
 **Side Note: You can use TI SysConfig for Pin Muxing**
 
-TI SysConfig can simplify the process of configuring pin muxing, but it comes with a couple of limitations you should be aware of when using it:
+TI SysConfig can aid the process of configuring pin muxing, but it comes with a couple of limitations you should be aware of when using it:
 
 - **Conflicting Pads**: TI SysConfig does not automatically disable conflicting pads. These are SoC pads that share the same physical header pins on the BeagleBone as the pads you’re configuring. If conflicting pads remain enabled, there is potential for erratic behavior. Realisticaly, you'll be fine in most cases.
+
+- **Signals with several pad options**: Make sure to explicitly select the correct SoC pad for each pin. Some signals have multiple SoC pad options. Normally only one of these options will go to the BB header. For example, with UART4_RXD, there are 3 options, pads AG28, P24, and W23. Ti SysConfig will by default pick the pad P24. Of these 3 pad options, AG28 is the only pad connected to the BB header. Look back at the pin mux spreadsheet linked above to figure out which SoC pads connect to which pins.
 
 - **Default Pin Direction**: TI SysConfig sets all pin muxes to "PIN_INPUT" by default, even for pins that should be outputs. For example, for the SPI6_CLK pin config (which should be an output), TI SysConfig will by default generate `J721E_IOPAD(0x170, PIN_INPUT, 7)` instead of the correct `J721E_IOPAD(0x9c, PIN_OUTPUT, 4)`. PIN_INPUT gives the pin both RX and TX perms. PIN_OUTPUT only gives TX.
 
