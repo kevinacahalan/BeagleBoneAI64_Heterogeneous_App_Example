@@ -47,12 +47,6 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Check if kernel version is specified
-if [ -z "$KERNEL" ]; then
-    echo "Error: Kernel version must be specified with --kernel-5 or --kernel-6"
-    print_help
-fi
-
 # Special things for kernel 5
 if [ "$KERNEL" = 5 ]; then
     # PLACEHOLDER
