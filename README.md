@@ -34,12 +34,12 @@ If anybody wants to contribute random stuff, please do.
 5. Run `df -h` to ensure you are now booting from your SD card
 6. Run this to get latest DT source among other important things `sudo apt update ; sudo apt-get dist-upgrade -y`
 7. Compile and install custom_overlays/our-custom-bbai64-overlay.dtso (refer to "Device tree info")
-7. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
-8. Power cycle the board several times
-9. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
-10. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
-11. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
-12. Connect loop jumper wires P8_33<-->P8_34 and P8_35<-->P8-36 for EQEP_1 test.
+8. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
+9. Power cycle the board several times
+10. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
+11. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
+12. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
+13. Connect loop jumper wires P8_33<-->P8_34 and P8_35<-->P8-36 for EQEP_1 test.
 
 
 
@@ -98,8 +98,9 @@ make CROSSCOMPILE=true # default is to not cross compile
 
 ### Device tree info
 - Copy the overlays from our `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board.
-- To compile overlays source on board run `sudo make clean` and `sudo make` from `/opt/source/dtb-6.12-Beagle`
-- To install the overlays, from `/opt/source/dtb-6.12-Beagle` run `sudo make arm64_install`
+- Run `git pull` from `/opt/source/dtb-6.12-Beagle` to get latest source.
+- To compile overlays source on board run `sudo make clean` and `sudo make` from `/opt/source/dtb-6.12-Beagle`.
+- To install the overlays, from `/opt/source/dtb-6.12-Beagle` run `sudo make arm64_install`.
 - On the board, in the config file`/boot/firmware/extlinux/extlinux.conf`, replace the line `#fdtoverlays /overlays/<file>.dtbo` with `fdtoverlays /overlays/our-custom-bbai64-overlay.dtbo`
 - Connect to debug uart and have fun. If things go bad you'll be down for some trial and error. You may end up re-flashing your board several times to recover it...
 
