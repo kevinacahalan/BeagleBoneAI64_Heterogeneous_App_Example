@@ -1,5 +1,10 @@
+// WARNING!!!! This code is not truly atomic and is susceptible  to RACE CONDITIONS!!!
+// WE NEED TO MAKE USE A MEMORY BARRIERS OR HARDWARE SEMAPHORES!!!!
+
 // Without true atomic operations we have to keep Peterson's Algorithm in mind...
+// BUT BE WARNED!! Peterson's Algorithm breaks with memory reordering!
 // https://en.wikipedia.org/wiki/Peterson%27s_algorithm
+
 
 
 #ifndef SEMAPHORE_H
