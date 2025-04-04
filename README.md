@@ -11,16 +11,30 @@ Example shows:
 4. Use of TI SDK/SDK exceptions and interrupt handlers.
 5. Use of EHRPWM module from R5 core to generate PWM signal for flashing LED on pin P9_25.
 6. Rpmsg talking...Linux calling simple math functions in R5.
+    * THIS BADLY NEEDS WORK....
 7. Use of McSPI from R5 core to do SPI7 transfers on pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
 8. Reading of EQEP quadrature encoder EQEP_1 from R5 core.
 9. GPIO from R5, (shown with quadrature encoder simulation, and shown with bit-banged spi example).
 
-Planned:
+Should work, currently no called test code:
 1. Shared memory between Linux and R5
-2. GPIO from linux
-3. SPI from linux
-4. UART from linux
-5. UART from R5
+    * Look at `SHARED_CODE/include/shared_mem.h`.
+    * Use pointer `SharedMemoryRegion* sharedMem`.
+    * YOU WILL CRASH IF DOING UNALIGNED READS AND WRITES. IIRC minimum read/write side it 16bits...The size of a short.. Normal memcpy() will crash things.
+2. UART from R5
+    * R5_SIDE/r5_code/include/io_test_functions/uart_tests.h
+
+Planned:
+1. GPIO from linux
+    * Use gpiod library. Will add example code at some point...
+2. SPI from linux
+    * Works, will add example code at some point...
+3. UART from linux (driver symlink not working, waiting on bug fix)
+5. CAN bus
+    * This one might be awhile. I need to first figure out and understand CAN bus.
+6. I2C from R5
+    * A big pain, may need to figure out interrupt routing.
+    * Broken code at `R5_SIDE/r5_code/include/io_test_functions/i2c_tests.h`
 
 
 If anybody wants to contribute random stuff, please do.
