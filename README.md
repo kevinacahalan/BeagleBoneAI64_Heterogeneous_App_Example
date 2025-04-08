@@ -4,7 +4,7 @@ For this example to work, use beagle firmware with kernel 6.12. Make to to have 
 
 This example was built off of Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
-Example shows:
+### Example shows:
 1. Initialization of a remote-proc resource table with a working trace log.
 2. Initialization of FPU for R5 core.
 3. Initialization of the MPU and cache to run R5 code from DDR memory.
@@ -16,7 +16,7 @@ Example shows:
 8. Reading of EQEP quadrature encoder EQEP_1 from R5 core.
 9. GPIO from R5, (shown with quadrature encoder simulation, and shown with bit-banged spi example).
 
-Should work, currently no called test code:
+**Should work, currently no called test code:**
 1. Shared memory between Linux and R5
     * Look at `SHARED_CODE/include/shared_mem.h`.
     * Use pointer `SharedMemoryRegion* sharedMem`.
@@ -24,7 +24,7 @@ Should work, currently no called test code:
 2. UART from R5
     * R5_SIDE/r5_code/include/io_test_functions/uart_tests.h
 
-Planned:
+**Planned:**
 1. GPIO from linux
     * Use gpiod library. Will add example code at some point...
 2. SPI from linux
@@ -40,7 +40,7 @@ Planned:
 If anybody wants to contribute random stuff, please do.
 
 
-#### Setup board
+### Setup board
 1. Grab debian 6.12 firmware. Flash the emmc, and also an sd card.
 2. Flash emmc with https://www.beagleboard.org/distros/bbai64-debian-12-9-2025-03-05-minimal-flasher-v6-12-x-ti
 3. Flash SD card with https://www.beagleboard.org/distros/bbai64-debian-12-9-2025-03-05-minimal-v6-12-x-ti
@@ -57,7 +57,7 @@ If anybody wants to contribute random stuff, please do.
 
 
 
-#### Setup and compile ti RTOS SDK
+### Setup and compile ti RTOS SDK
 Make sure to use **Debian12** for building. It will make your life easier. On windows use WSL Debian 12.
 
 1.  Run `wget https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-bA0wfI4X2g/10.00.00.05/ti-processor-sdk-rtos-j721e-evm-10_00_00_05.tar.gz`
@@ -65,7 +65,7 @@ Make sure to use **Debian12** for building. It will make your life easier. On wi
 3.  Place decompressed sdk folder in ~/ti/
 4.  Run `sudo apt install libtinfo5`  needed for ti sdk build
 
-##### Build sdk/pdk:
+#### Build sdk/pdk:
 1. Change to the directory `~/ti/ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages` using `cd`.
 2. 
     From the `packages` directory within the Jacinto PDK, run `make -s all_libs BUILD_PROFILE=release` to build the release libraries, and run `make -s all_libs BUILD_PROFILE=debug` to build the debug libraries.
