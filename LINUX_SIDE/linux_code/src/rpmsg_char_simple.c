@@ -22,106 +22,6 @@
 
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
-static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev);
-
-/*
- * Helper function to send a message.
- */
-static int send_msg(int fd, const void *msg, int len)
-{
-    int ret = write(fd, msg, len);
-    if (ret < 0)
-    {
-        perror("Error writing to rpmsg endpoint");
-        return -1;
-    }
-    return ret;
-}
-
-/*
- * Helper function to receive a message.
- */
-static int recv_msg(int fd, int max_len, void *reply_msg, int *reply_len)
-{
-    int ret = read(fd, reply_msg, max_len);
-    if (ret < 0)
-    {
-        perror("Error reading from rpmsg endpoint");
-        return -1;
-    }
-    *reply_len = ret;
-    return 0;
-}
-
-static int function_a(rpmsg_char_dev_t *rcdev, int a, int b) {
-    request_tagged_union_t req;
-	int result = 0;
-    int ret = 0;
-	req.tag = FUNCTION_A;
-    req.function_a.a = a;  /* First integer */
-    req.function_a.b = b;  /* Second integer */
-    printf("Sending addition request: %d + %d\n", req.function_a.a, req.function_a.b);
-
-    ret = send_msg(rcdev->fd, (const void *)&req, sizeof(req));
-    if (ret != sizeof(req))
-    {
-        printf("Error: written bytes (%d) do not match expected (%zu)\n", ret, sizeof(req));
-        rpmsg_cleanup(rcdev);
-    }
-
-    /* Wait for the result (an integer) */
-    int reply_len = 0;
-    ret = recv_msg(rcdev->fd, sizeof(result), (void *)&result, &reply_len);
-    if (ret < 0)
-    {
-        printf("Error receiving the response\n");
-        rpmsg_cleanup(rcdev);
-    }
-    if (reply_len != sizeof(result))
-    {
-        printf("Unexpected reply size (%d bytes)\n", reply_len);
-        rpmsg_cleanup(rcdev);
-    }
-
-	printf("Received result from baremetal: %d\n", result);
-
-    return result;
-}
-
-static float function_b(rpmsg_char_dev_t *rcdev, float a, float b, float c) {
-    request_tagged_union_t req;
-    float f_result = 0.0;
-    int ret = 0;
-	req.tag = FUNCTION_B;
-	req.function_b.a = a;  /* First integer */
-    req.function_b.b = b;  /* Second integer */
-	req.function_b.c = c;
-    printf("Sending Float request: %f + %f + %f\n", req.function_b.a, req.function_b.b, req.function_b.c);
-
-    ret = send_msg(rcdev->fd, (const void *)&req, sizeof(req));
-    if (ret != sizeof(req))
-    {
-        printf("Error: written bytes (%d) do not match expected (%zu)\n", ret, sizeof(req));
-        rpmsg_cleanup(rcdev);
-    }
-
-    /* Wait for the result (a float) */
-    int reply_len = 0;
-    ret = recv_msg(rcdev->fd, sizeof(f_result), (void *)&f_result, &reply_len);
-    if (ret < 0)
-    {
-        printf("Error receiving the response\n");
-        rpmsg_cleanup(rcdev);
-    }
-    if (reply_len != sizeof(f_result))
-    {
-        printf("Unexpected reply size (%d bytes)\n", reply_len);
-        rpmsg_cleanup(rcdev);
-    }
-
-    printf("Received f_result from baremetal: %f\n", f_result);
-	return a + b + c;
-}
 
 static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
     int ret = rpmsg_char_close(rcdev);
@@ -130,6 +30,88 @@ static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
         perror("Error closing the rpmsg endpoint device");
     }
     return ret;
+}
+
+static float linux_function_x(int param) {
+    float rt = param * 1.5f;
+    printf("Got value %d from R5, sending back value %f\n", param, rt);
+    return rt;  // Example: multiply by 1.5
+}
+
+static int linux_function_y(float param) {
+    int rt = (int)(param * 2.0f);
+    printf("Got value %f from R5, sending back value %d\n", param, rt);
+    return (int)(param * 2.0f);  // Example: multiply by 2 and convert to int
+}
+
+static void handle_request_linux(MESSAGE *req_msg, rpmsg_char_dev_t *rcdev) {
+    request_data_t *req = &req_msg->data.request;
+    MESSAGE response_msg = {0};
+    response_msg.tag = MESSAGE_RESPONSE;
+    response_msg.request_id = req_msg->request_id;
+    response_msg.data.response.function_tag = req->function_tag;
+
+    switch (req->function_tag) {
+        case FUNCTION_X:
+            response_msg.data.response.result.result_function_x = 
+                linux_function_x(req->params.function_x.param);
+            break;
+        case FUNCTION_Y:
+            response_msg.data.response.result.result_function_y = 
+                linux_function_y(req->params.function_y.param);
+            break;
+        default:
+            fprintf(stderr, "Linux: Unknown function tag %d\n", req->function_tag);
+            return;
+    }
+
+    int ret = write(rcdev->fd, &response_msg, sizeof(MESSAGE));
+    printf("Sent response to R5 for tag %d\n", (int)(req->function_tag));
+    if (ret < 0) {
+        perror("Linux: Failed to send response");
+    }
+}
+
+static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
+    printf("Inside call_function_a_blocking\n");
+    static uint32_t request_id_counter = 1;
+    uint32_t request_id = request_id_counter++;
+
+    // Send request
+    MESSAGE req_msg = {0};
+    req_msg.tag = MESSAGE_REQUEST;
+    req_msg.request_id = request_id;
+    req_msg.data.request.function_tag = FUNCTION_A;
+    req_msg.data.request.params.function_a.a = a;
+    req_msg.data.request.params.function_a.b = b;
+
+    int ret = write(rcdev->fd, &req_msg, sizeof(MESSAGE));
+    if (ret < 0) {
+        perror("Linux: Failed to send request");
+        return 0;
+    }
+
+    // Wait for response, processing other requests
+    while (1) {
+        MESSAGE resp_msg;
+        ret = read(rcdev->fd, &resp_msg, sizeof(MESSAGE));
+        if (ret == sizeof(MESSAGE)) {
+            if (resp_msg.tag == MESSAGE_RESPONSE && resp_msg.request_id == request_id) {
+                if (resp_msg.data.response.function_tag == FUNCTION_A) {
+                    return resp_msg.data.response.result.result_function_a;
+                } else {
+                    fprintf(stderr, "Linux: Mismatched function tag %d\n", resp_msg.data.response.function_tag);
+                }
+            } else if (resp_msg.tag == MESSAGE_REQUEST) {
+                handle_request_linux(&resp_msg, rcdev);
+            }
+        } else if (ret < 0) {
+            perror("Linux: Read error");
+            break;
+        }
+        // Optional: Use select() or poll() for efficiency
+    }
+    return 0;  // Unreachable with infinite loop; add timeout in production
 }
 
 /*
@@ -155,7 +137,7 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
     }
 
     for (int i = 0 ; !rcdev ; i++) {
-        sleep(5);
+        sleep(2);
         printf("ATTEMPT #%d\n", i);
         rcdev = rpmsg_char_open(rproc_id, dev_name, local_endpt, remote_endpt, eptdev_name, flags);
         perror("Unable to create rpmsg endpoint device");
@@ -164,15 +146,29 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
     printf("Created endpoint device %s, fd = %d, port = %d\n", eptdev_name,
            rcdev->fd, rcdev->endpt);
 
-    // ADD INT
-    function_a(rcdev, 4,7);
-    function_a(rcdev, 3,7);
-    function_a(rcdev, 2,7);
-    function_a(rcdev, 1,7);
-    function_a(rcdev, 0,7);
 
-	// ADD FLOAT
-    function_b(rcdev, 4.0, 7.0, 3.0);
+    // Example: Call R5 function
+    int result = call_function_a_blocking(rcdev, 5, 3);
+    printf("Linux: Result from FUNCTION_A: %d\n", result);
+
+    // Optional: Main loop for continuous processing
+    while (1) {
+        printf("bla\n");
+        MESSAGE msg;
+        // If there is no message, I get hung on this read. I would like linux to continue on if there is no message
+        int ret = read(rcdev->fd, &msg, sizeof(MESSAGE));
+        printf("boop\n");
+        if (ret == sizeof(MESSAGE)) {
+            if (msg.tag == MESSAGE_REQUEST) {
+                handle_request_linux(&msg, rcdev);
+            } else if (msg.tag == MESSAGE_RESPONSE) {
+                printf("Linux: Received response for request_id %u\n", msg.request_id);
+            }
+        }
+        result = call_function_a_blocking(rcdev, 5, 3);
+        printf("Linux: Result from FUNCTION_A: %d\n", result);
+        printf("\n");
+    }
     
 
     // this cleanup function will sometimes get called twice 
@@ -198,16 +194,8 @@ int rpmsg_char_simple_main(void)
     }
     
     status = rpmsg_char_rpc(rproc_id, dev_name, local_endpt, remote_endpt);
+    (void)status;
     rpmsg_char_exit();
-
-    if (status < 0)
-    {
-        printf("TEST STATUS: FAILED\n");
-    }
-    else
-    {
-        printf("TEST STATUS: PASSED\n");
-    }
 
     return 0;
 }

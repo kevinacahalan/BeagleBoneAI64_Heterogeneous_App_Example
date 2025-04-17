@@ -30,61 +30,125 @@ void do_other_random_things() {
 // MAKE SURE TO ADD YOUR FUNCTIONS TO request_tagged_union_t in SHARED_CODE/include/shared_rpmsg.h
 
 int function_a(int a, int b) {
-    printf("%s: Adding %d + %d inside R5 called from linux\n", Ipc_mpGetSelfName(), a, b);
-    return a + b;
+    int rt = a + b;
+    printf("Got %d and %d from linux call, sending back %d\n", a, b, rt);
+    return rt;
 }
 
 float function_b(float a, float b, float c) {
-    printf("%s: Adding %f + %f + %f inside R5 called from linux\n", Ipc_mpGetSelfName(), a, b, c);
-    return a + b + c;
+    float rt = a + b + c;
+    printf("Got %f, %f, and %f from linux call, sending back %f\n", a, b, c, rt);
+    return rt;
 }
 
-// returns IPC_ETIMEOUT on no message, otherwise returns other stuff
-int process_one_rproc_message(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt, uint32_t *remoteEndPt, uint32_t *remoteProcId) {
-    int32_t status = 0;
-    uint16_t rxLen = 0;
-    request_tagged_union_t req;
-    /* Wait for a new message */
+void handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId) {
+    request_data_t *req = &req_msg->data.request;
+    MESSAGE response_msg = {0};
+    response_msg.tag = MESSAGE_RESPONSE;
+    response_msg.request_id = req_msg->request_id;
+    response_msg.data.response.function_tag = req->function_tag;
 
-    /* Expect the incoming message to be an request_tagged_union_t */
-    rxLen = sizeof(request_tagged_union_t);
-    // If I make this a RPMessage_recv with a timeout of 0, some messages are double processed...
-    status = RPMessage_recvNb(*handle_chrdev, (Ptr)&req, &rxLen, remoteEndPt, remoteProcId);
-    if (status != IPC_SOK)
-    {
-        // Will return here if there is no message
-        return status; // much of the time returns IPC_ETIMEOUT..(error -4 for no message)
+    switch (req->function_tag) {
+        case FUNCTION_A:
+            response_msg.data.response.result.result_function_a = 
+                function_a(req->params.function_a.a, req->params.function_a.b);
+            break;
+        case FUNCTION_B:
+            response_msg.data.response.result.result_function_b = 
+                function_b(req->params.function_b.a, req->params.function_b.b, req->params.function_b.c);
+            break;
+        default:
+            printf("R5: Unknown function tag %d\n", req->function_tag);
+            return;  // No response sent for unknown functions
     }
 
-    if (rxLen != sizeof(request_tagged_union_t))
-    {
-        printf("%s: Unexpected message size: %u bytes\n", Ipc_mpGetSelfName(), rxLen);
-        return 1333;
+    int32_t status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &response_msg, sizeof(MESSAGE));
+    if (status != IPC_SOK) {
+        printf("R5: Failed to send response, status = %ld\n", status);
+    }
+}
+
+float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
+    printf("Start of call_linux_function_x_blocking\n");
+    static uint32_t request_id_counter = 1;
+    uint32_t request_id = request_id_counter++;
+
+    // Send request
+    MESSAGE req_msg = {0};
+    req_msg.tag = MESSAGE_REQUEST;
+    req_msg.request_id = request_id;
+    req_msg.data.request.function_tag = FUNCTION_X;
+    req_msg.data.request.params.function_x.param = param;
+
+    int32_t status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &req_msg, sizeof(MESSAGE));
+    if (status != IPC_SOK) {
+        printf("R5: Failed to send request, status = %ld\n", status);
+        return 0.0f;
     }
 
-    // Figure out which function to call
-    switch (req.tag)
-    {
-    case FUNCTION_A:
-        int result = function_a(req.function_a.a, req.function_a.b);
-        status = RPMessage_send(*handle_chrdev, *remoteProcId, *remoteEndPt, *myEndPt, &result, sizeof(result));
-        break;
-    case FUNCTION_B:
-        float f_result = function_b(req.function_b.a, req.function_b.b, req.function_b.c);
-        status = RPMessage_send(*handle_chrdev, *remoteProcId, *remoteEndPt, *myEndPt, &f_result, sizeof(f_result));
-        break;
+    // Wait for response, processing other requests to avoid deadlock
+    while (1) {
+        MESSAGE resp_msg;
+        uint16_t rxLen = sizeof(MESSAGE);
+        status = RPMessage_recvNb(handle, (Ptr)&resp_msg, &rxLen, &remoteEndPt, &remoteProcId);
+        if (status == IPC_SOK && rxLen == sizeof(MESSAGE)) {
+            if (resp_msg.tag == MESSAGE_RESPONSE && resp_msg.request_id == request_id) {
+                if (resp_msg.data.response.function_tag == FUNCTION_X) {
+                    printf("GOT RETURN VALUE %f from linux function with tag %d\n", resp_msg.data.response.result.result_function_x, resp_msg.data.response.function_tag);
+                    return resp_msg.data.response.result.result_function_x;
+                } else {
+                    printf("R5: Mismatched function tag %d in response\n", resp_msg.data.response.function_tag);
+                }
+            } else if (resp_msg.tag == MESSAGE_REQUEST) {
+                printf("shit\n");
+                handle_request(&resp_msg, handle, myEndPt, remoteEndPt, remoteProcId);
+            }
+            printf("maaan\n");
+        }
 
-    default:
-        printf("Unknown req.tag %d\b", req.tag);
-        return 55;
-        break;
+        // if (status != IPC_SOK) {
+        //     printf("status != IPC_SOK\n");
+        //     return status;  // No message or error
+        // }
+
+        if (status == IPC_ETIMEOUT)
+        {
+            // The is the case for pulling when there is no message iirc
+            // printf("Tried to pull message, there was none\n");
+        } else if (status == IPC_SOK) {
+            printf("handle_request() was likely called from %d\n", __LINE__);
+        } else {
+            printf("ERROR: RPMessage_recvNb status = %ld\n", status);
+        }
+        // break;
+        // Optional: Add delay or timeout to prevent infinite loop
     }
 
-    if (status != IPC_SOK)
-    {
-        printf("%s: Failed to send result, error: %ld\n", Ipc_mpGetSelfName(), status);
+    printf("End of call_linux_function_x_blocking..\n");
+    return 0.0f;  // Unreachable with infinite loop; add timeout in production
+}
+
+int process_one_message(RPMessage_Handle handle, uint32_t myEndPt, uint32_t *remoteEndPt, uint32_t *remoteProcId) {
+    MESSAGE msg;
+    uint16_t rxLen = sizeof(MESSAGE);
+    int32_t status = RPMessage_recvNb(handle, (Ptr)&msg, &rxLen, remoteEndPt, remoteProcId);
+    if (status != IPC_SOK) {
+        return status;  // No message or error
+    }
+    if (rxLen != sizeof(MESSAGE)) {
+        printf("R5: Received message of unexpected size %d, expected %d\n", rxLen, sizeof(MESSAGE));
+        return -1;
     }
 
+    if (msg.tag == MESSAGE_REQUEST) {
+        handle_request(&msg, handle, myEndPt, *remoteEndPt, *remoteProcId);
+    } else if (msg.tag == MESSAGE_RESPONSE) {
+        printf("R5: Received response for request_id %lu, function_tag %d\n", 
+               msg.request_id, msg.data.response.function_tag);
+               
+    } else {
+        printf("R5: Unknown message tag %d\n", msg.tag);
+    }
     return 0;
 }
 
@@ -96,26 +160,32 @@ int32_t start_listing_to_linux(void)
     RPMessage_Handle handle_chrdev;
     setup_ipc(&handle_chrdev, &myEndPt);
 
+    Osal_delay(2000);
+    // call_linux_function_x_blocking(handle_chrdev, myEndPt, remoteEndPt, remoteProcId, 16);
+
     printf("Inside start_listing_to_linux() waiting for messages\n");
     for (size_t i = 0;; i++)
     {   
-        Osal_delay(1000); // 1 second 
+        Osal_delay(2000); // 1 second 
         // printf("R5 loop print %d\n", i);
         int rt = 0;
-        rt = process_one_rproc_message(&handle_chrdev, &myEndPt, &remoteEndPt, &remoteProcId);
+        rt = process_one_message(handle_chrdev, myEndPt, &remoteEndPt, &remoteProcId);
         // printf("myEndPt= %ld, remoteEndPt=%ld, remoteProcId=%ld\n", myEndPt, remoteEndPt, remoteProcId);
         switch (rt)
         {
         case IPC_ETIMEOUT: // no message
             // printf("Tried to pull a message but there were none\n");
             break;
-        
+        case IPC_SOK: // eh
+            break;
         default:
-            printf("rt = %d...", rt);
+            printf("Possible problem, process_one_message() rt = %d...\n", rt);
             break;
         }
 
-        do_other_random_things();
+        // do_other_random_things();
+        call_linux_function_x_blocking(handle_chrdev, myEndPt, remoteEndPt, remoteProcId, 16);
+        printf("\n");
     }
         
     return 0;
@@ -131,6 +201,7 @@ int main()
     test_spi_mcspi7(0);
 
     test_eqep1_with_gpio_encoder_simulation();
+    run_pwm_test(5);
 
 
     printf("\nAbout to start listing to linux\n");
