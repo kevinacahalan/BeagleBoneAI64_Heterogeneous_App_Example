@@ -100,7 +100,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
                     printf("R5: Mismatched function tag %d in response\n", resp_msg.data.response.function_tag);
                 }
             } else if (resp_msg.tag == MESSAGE_REQUEST) {
-                printf("shit\n");
+                printf("Found request from Linux while waiting for response To R5 (May hit out-of-order responses, potential for lockup\n");
                 handle_request(&resp_msg, handle, myEndPt, remoteEndPt, remoteProcId);
             }
             printf("maaan\n");
