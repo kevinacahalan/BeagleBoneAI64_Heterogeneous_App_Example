@@ -22,6 +22,38 @@
 
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
+// Really should at some point move this function to it's own file
+#include <time.h>
+static inline void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
+    // 1) Sanity check
+    if (max_ms <= min_ms) {
+        struct timespec ts = {
+            .tv_sec  = min_ms / 1000,
+            .tv_nsec = (min_ms % 1000) * 1000000U
+        };
+        nanosleep(&ts, NULL);
+        return;
+    }
+
+    // 2) One‑time seed
+    static int seeded = 0;
+    if (!seeded) {
+        srandom((unsigned)time(NULL) ^ (unsigned)getpid());
+        seeded = 1;
+    }
+
+    // 3) Compute span and pick a random offset
+    uint32_t span     = max_ms - min_ms + 1;
+    uint32_t offs     = (uint32_t)random() % span;  // modulo‐bias is negligible for small spans
+    uint32_t delay_ms = min_ms + offs;
+
+    // 4) Sleep
+    struct timespec req = {
+        .tv_sec  = delay_ms / 1000,
+        .tv_nsec = (delay_ms % 1000) * 1000000U
+    };
+    nanosleep(&req, NULL);
+}
 
 static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
     int ret = rpmsg_char_close(rcdev);
@@ -34,13 +66,13 @@ static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
 
 static float linux_function_x(int param) {
     float rt = param * 1.5f;
-    printf("Got value %d from R5, sending back value %f\n", param, rt);
+    printf("linux_function_x: Got value %d from R5, sending back value %f\n", param, rt);
     return rt;  // Example: multiply by 1.5
 }
 
 static int linux_function_y(float param) {
     int rt = (int)(param * 2.0f);
-    printf("Got value %f from R5, sending back value %d\n", param, rt);
+    printf("linux_function_y: Got value %f from R5, sending back value %d\n", param, rt);
     return (int)(param * 2.0f);  // Example: multiply by 2 and convert to int
 }
 
@@ -64,9 +96,18 @@ static void handle_request_linux(MESSAGE *req_msg, rpmsg_char_dev_t *rcdev) {
             fprintf(stderr, "Linux: Unknown function tag %d\n", req->function_tag);
             return;
     }
+    // This delay may potentially kickoff lockups if code elsewhere is not robust enough
+    burn_time_pretending_to_do_stuff(800, 1200);
 
     int ret = write(rcdev->fd, &response_msg, sizeof(MESSAGE));
-    printf("Sent response to R5 for tag %d\n", (int)(req->function_tag));
+
+    if (req->function_tag == FUNCTION_X){
+        printf("Sent response with rt=%f to R5 for tag %d, FUNCTION_X \n", response_msg.data.response.result.result_function_x, (int)(req->function_tag));
+    } else {
+        printf("Sent response to R5 for tag %d\n", (int)(req->function_tag));
+    }
+
+
     if (ret < 0) {
         perror("Linux: Failed to send response");
     }
@@ -114,10 +155,6 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     return 0;  // Unreachable with infinite loop; add timeout in production
 }
 
-/*
- * Function to perform the RPC:
- * Send an addition request (two ints) and wait for the integer result.
- */
 static int rpmsg_char_rpc(int rproc_id, char *dev_name,
                           unsigned int local_endpt, unsigned int remote_endpt)
 {
@@ -153,21 +190,25 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
 
     // Optional: Main loop for continuous processing
     while (1) {
-        printf("bla\n");
         MESSAGE msg;
         // If there is no message, I get hung on this read. I would like linux to continue on if there is no message
         int ret = read(rcdev->fd, &msg, sizeof(MESSAGE));
-        printf("boop\n");
         if (ret == sizeof(MESSAGE)) {
             if (msg.tag == MESSAGE_REQUEST) {
                 handle_request_linux(&msg, rcdev);
             } else if (msg.tag == MESSAGE_RESPONSE) {
                 printf("Linux: Received response for request_id %u\n", msg.request_id);
             }
+        } else {
+            printf("read returned %d\n", ret);
         }
+
+        burn_time_pretending_to_do_stuff(800, 1200);
+
         result = call_function_a_blocking(rcdev, 5, 3);
         printf("Linux: Result from FUNCTION_A: %d\n", result);
         printf("\n");
+        burn_time_pretending_to_do_stuff(800, 1200);
     }
     
 

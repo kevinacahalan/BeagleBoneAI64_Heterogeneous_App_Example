@@ -11,6 +11,7 @@
 #include <ti/osal/osal.h>
 
 #include <ai64/bbai64_rpmsg.h>
+#include <ai64/bbai64_clocks.h>
 
 
 #include <io_test_functions/gpio_tests.h>
@@ -20,6 +21,27 @@
 
 volatile int wait_for_debugger = 0;
 
+// Waste a pseudo random amount of time between min and max ms
+void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
+    if (max_ms <= min_ms) {
+        Osal_delay(min_ms);
+        return;
+    }
+
+    // 1) Grab timer in µs, fold into 32 bits
+    uint64_t t64 = get_gtc_as_microseconds();
+    uint32_t x  = (uint32_t)(t64 ^ (t64 >> 32));
+
+    // 2) Simple xorshift to mix bits
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+
+    // 3) Scale into [0, span), then shift up to [min_ms, max_ms]
+    uint32_t span  = max_ms - min_ms + 1;
+    uint32_t offs  = x % span;
+    Osal_delay(offs + min_ms);
+}
 
 void do_other_random_things() {
     printf("\n> Inside do_other_random_things()\n");
@@ -31,13 +53,13 @@ void do_other_random_things() {
 
 int function_a(int a, int b) {
     int rt = a + b;
-    printf("Got %d and %d from linux call, sending back %d\n", a, b, rt);
+    printf("function_a: Got %d and %d from linux call, sending back %d\n", a, b, rt);
     return rt;
 }
 
 float function_b(float a, float b, float c) {
     float rt = a + b + c;
-    printf("Got %f, %f, and %f from linux call, sending back %f\n", a, b, c, rt);
+    printf("function_b: Got %f, %f, and %f from linux call, sending back %f\n", a, b, c, rt);
     return rt;
 }
 
@@ -62,6 +84,8 @@ void handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt,
             return;  // No response sent for unknown functions
     }
 
+    burn_time_pretending_to_do_stuff(800, 1200);
+
     int32_t status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &response_msg, sizeof(MESSAGE));
     if (status != IPC_SOK) {
         printf("R5: Failed to send response, status = %ld\n", status);
@@ -69,7 +93,7 @@ void handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt,
 }
 
 float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
-    printf("Start of call_linux_function_x_blocking\n");
+    // printf("Start of call_linux_function_x_blocking\n");
     static uint32_t request_id_counter = 1;
     uint32_t request_id = request_id_counter++;
 
@@ -86,6 +110,8 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         return 0.0f;
     }
 
+    burn_time_pretending_to_do_stuff(800, 1200);
+
     // Wait for response, processing other requests to avoid deadlock
     while (1) {
         MESSAGE resp_msg;
@@ -100,10 +126,9 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
                     printf("R5: Mismatched function tag %d in response\n", resp_msg.data.response.function_tag);
                 }
             } else if (resp_msg.tag == MESSAGE_REQUEST) {
-                printf("Found request from Linux while waiting for response To R5 (May hit out-of-order responses, potential for lockup\n");
+                printf("Hit request while waiting for response To R5 (possible out-of-order responses, potential for lockup)\n");
                 handle_request(&resp_msg, handle, myEndPt, remoteEndPt, remoteProcId);
             }
-            printf("maaan\n");
         }
 
         // if (status != IPC_SOK) {
@@ -116,7 +141,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
             // The is the case for pulling when there is no message iirc
             // printf("Tried to pull message, there was none\n");
         } else if (status == IPC_SOK) {
-            printf("handle_request() was likely called from %d\n", __LINE__);
+            printf("handle_request() was likely called from %s\n");
         } else {
             printf("ERROR: RPMessage_recvNb status = %ld\n", status);
         }
@@ -124,7 +149,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         // Optional: Add delay or timeout to prevent infinite loop
     }
 
-    printf("End of call_linux_function_x_blocking..\n");
+    // printf("End of call_linux_function_x_blocking..\n");
     return 0.0f;  // Unreachable with infinite loop; add timeout in production
 }
 
@@ -152,6 +177,8 @@ int process_one_message(RPMessage_Handle handle, uint32_t myEndPt, uint32_t *rem
     return 0;
 }
 
+
+
 int32_t start_listing_to_linux(void)
 {
     uint32_t myEndPt = 0; // becomes 14
@@ -166,7 +193,6 @@ int32_t start_listing_to_linux(void)
     printf("Inside start_listing_to_linux() waiting for messages\n");
     for (size_t i = 0;; i++)
     {   
-        Osal_delay(2000); // 1 second 
         // printf("R5 loop print %d\n", i);
         int rt = 0;
         rt = process_one_message(handle_chrdev, myEndPt, &remoteEndPt, &remoteProcId);
@@ -186,6 +212,8 @@ int32_t start_listing_to_linux(void)
         // do_other_random_things();
         call_linux_function_x_blocking(handle_chrdev, myEndPt, remoteEndPt, remoteProcId, 16);
         printf("\n");
+
+        burn_time_pretending_to_do_stuff(800, 1200);
     }
         
     return 0;
