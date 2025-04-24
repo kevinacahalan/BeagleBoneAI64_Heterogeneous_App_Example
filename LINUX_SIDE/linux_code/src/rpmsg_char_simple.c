@@ -16,44 +16,12 @@
 #include <semaphore.h>
 #include <linux/rpmsg.h>
 
+#include "../../../SHARED_CODE/include/random_utils.h"
 
 #include <ti_rpmsg_char.h>
 #include <rpmsg_char_simple.h>
 
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
-
-// Really should at some point move this function to it's own file
-#include <time.h>
-static inline void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
-    // 1) Sanity check
-    if (max_ms <= min_ms) {
-        struct timespec ts = {
-            .tv_sec  = min_ms / 1000,
-            .tv_nsec = (min_ms % 1000) * 1000000U
-        };
-        nanosleep(&ts, NULL);
-        return;
-    }
-
-    // 2) One‑time seed
-    static int seeded = 0;
-    if (!seeded) {
-        srandom((unsigned)time(NULL) ^ (unsigned)getpid());
-        seeded = 1;
-    }
-
-    // 3) Compute span and pick a random offset
-    uint32_t span     = max_ms - min_ms + 1;
-    uint32_t offs     = (uint32_t)random() % span;  // modulo‐bias is negligible for small spans
-    uint32_t delay_ms = min_ms + offs;
-
-    // 4) Sleep
-    struct timespec req = {
-        .tv_sec  = delay_ms / 1000,
-        .tv_nsec = (delay_ms % 1000) * 1000000U
-    };
-    nanosleep(&req, NULL);
-}
 
 static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
     int ret = rpmsg_char_close(rcdev);

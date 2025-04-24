@@ -10,6 +10,9 @@
 #include <ti/csl/soc.h>
 #include <ti/osal/osal.h>
 
+#include "../../../SHARED_CODE/include/random_utils.h"
+// #include "../../../SHARED_CODE/src/random_utils.c"
+
 #include <ai64/bbai64_rpmsg.h>
 #include <ai64/bbai64_clocks.h>
 
@@ -20,28 +23,6 @@
 #include <io_test_functions/eqep_tests.h>
 
 volatile int wait_for_debugger = 0;
-
-// Waste a pseudo random amount of time between min and max ms
-void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
-    if (max_ms <= min_ms) {
-        Osal_delay(min_ms);
-        return;
-    }
-
-    // 1) Grab timer in µs, fold into 32 bits
-    uint64_t t64 = get_gtc_as_microseconds();
-    uint32_t x  = (uint32_t)(t64 ^ (t64 >> 32));
-
-    // 2) Simple xorshift to mix bits
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-
-    // 3) Scale into [0, span), then shift up to [min_ms, max_ms]
-    uint32_t span  = max_ms - min_ms + 1;
-    uint32_t offs  = x % span;
-    Osal_delay(offs + min_ms);
-}
 
 void do_other_random_things() {
     printf("\n> Inside do_other_random_things()\n");
@@ -141,7 +122,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
             // The is the case for pulling when there is no message iirc
             // printf("Tried to pull message, there was none\n");
         } else if (status == IPC_SOK) {
-            printf("handle_request() was likely called from %s\n");
+            printf("handle_request() was likely called from call_linux_function_x_blocking\n");
         } else {
             printf("ERROR: RPMessage_recvNb status = %ld\n", status);
         }
@@ -230,6 +211,7 @@ int main()
 
     test_eqep1_with_gpio_encoder_simulation();
     run_pwm_test(5);
+    burn_time_pretending_to_do_stuff(800, 1200);
 
 
     printf("\nAbout to start listing to linux\n");

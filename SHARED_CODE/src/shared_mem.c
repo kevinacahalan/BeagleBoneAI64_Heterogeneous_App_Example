@@ -1,6 +1,6 @@
 #if R5
 
-#include <ai64/shared_mem.h>
+#include "../include/shared_mem.h"
 #include <ai64/bbai64_gpio.h>
 #include <ti/csl/csl_gpio.h>
 

@@ -23,7 +23,8 @@ INCL += $(wildcard $(INCLUDE_DIR)/io_test_functions/*.h)
 SRCDIR = r5_code/src
 SRC += $(wildcard $(SRCDIR)/*.c) 
 SRC += $(wildcard $(SRCDIR)/ai64/*.c)
-SRC += $(wildcard $(SRCDIR)/io_test_functions/*.c) 
+SRC += $(wildcard $(SRCDIR)/io_test_functions/*.c)
+SRC += $(wildcard ../SHARED_CODE/src/*.c) 
 SRC += $(wildcard r5/*.S) 
 SRC += $(wildcard r5/*.c)
 
