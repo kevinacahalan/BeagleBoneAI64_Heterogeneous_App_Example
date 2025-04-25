@@ -2,39 +2,39 @@
 
 For this example to work, use beagle firmware with kernel 6.12. Make to to have the latest device tree overlay setup for 6.12.
 
-This example was built off of Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
+Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
-### Example shows:
-1. Initialization of a remote-proc resource table with a working trace log.
-2. Initialization of FPU for R5 core.
-3. Initialization of the MPU and cache to run R5 code from DDR memory.
-4. Use of TI SDK/SDK exceptions and interrupt handlers.
-5. Use of EHRPWM module from R5 core to generate PWM signal for flashing LED on pin P9_25.
-6. Rpmsg talking...Linux calling simple math functions in R5.
-    * THIS BADLY NEEDS WORK....
-7. Use of McSPI from R5 core to do SPI7 transfers on pins P9_28(cs), P9_31(clk), and P9_30(MOSI).
-8. Reading of EQEP quadrature encoder EQEP_1 from R5 core.
-9. GPIO from R5, (shown with quadrature encoder simulation, and shown with bit-banged spi example).
+### HOW TO RUN/SETUP
+- For encoder test to work, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
+- To see PWM work, connect an LED to P9_25.
+- To see SPI7, connect a logic analyzer to P9_28 (CS), P9_31 (CLK) and P9_30 (MOSI).
+- *SCROLL DOWN BELOW for build and execution instructions*
 
-**Should work, currently no called test code:**
-1. Shared memory between Linux and R5
-    * Look at `SHARED_CODE/include/shared_mem.h`.
-    * Use pointer `SharedMemoryRegion* sharedMem`.
-    * YOU WILL CRASH IF DOING UNALIGNED READS AND WRITES. IIRC minimum read/write side it 16bits...The size of a short.. Normal memcpy() will crash things.
-2. UART from R5
-    * R5_SIDE/r5_code/include/io_test_functions/uart_tests.h
 
-**Planned:**
-1. GPIO from linux
-    * Use gpiod library. Will add example code at some point...
-2. SPI from linux
-    * Works, will add example code at some point...
-3. UART from linux (driver symlink not working, waiting on bug fix)
-5. CAN bus
-    * This one might be awhile. I need to first figure out and understand CAN bus.
-6. I2C from R5
-    * A big pain, may need to figure out interrupt routing.
-    * Broken code at `R5_SIDE/r5_code/include/io_test_functions/i2c_tests.h`
+### Demonstrated Features
+- **Remote Processor Resource Table Initialization**: Remote-proc resource table with trace log.
+- **FPU Initialization for R5 Core**: TI AM64 sdk code...
+- **MPU and Cache Configuration**: TI AM64 sdk code...
+- **Exception and Interrupt Handling**: TI J721e SDK/PDK exception/interrupt handlers.
+- **PWM Signal Generation**: Flashing LED on pin P9_25.
+- **Rpmsg**: Basic Linux-R5 core communication (under development and a mess rn).
+- **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
+- **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
+- **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
+
+### Implemented but not used by test code yet
+- **Shared Memory**: Linux-R5 memory sharing (`SHARED_CODE/include/shared_mem.h`, `SharedMemoryRegion* sharedMem`). **Warning**: 16-bit aligned reads/writes required to avoid crashes; standard `memcpy()` will crash.
+- **R5 UART writing**: `R5_SIDE/r5_code/include/io_test_functions/uart_tests.h`.
+
+### Planned
+- **GPIO Linux**: Tested and working with `gpiod` library, need to write nice example code.
+- **SPI Linux**: Tested, working; need to write nice example code.
+- **UART Linux**: Tested, working; pending nice example code, symlink bug fix for 6.12 firmware.
+- **I2C Linux**: Tested, working; need to write nice example code.
+- **CAN Bus**: No progress.
+- **R5 I2C**: Planned, stuck on interrupt routing issues (`R5_SIDE/r5_code/include/io_test_functions/i2c_tests.h`).
+- **R5 UART reading**: Have not attempted yet.
+- **R5 SPI reading**: Have not attempted yet.
 
 
 If anybody wants to contribute random stuff, please do.
