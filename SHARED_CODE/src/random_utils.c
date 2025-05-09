@@ -86,3 +86,28 @@ void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
     nanosleep(&req, NULL);
 }
 #endif
+
+void printDataSizes()
+{
+    // Integer types
+    printf("Size of char: %lu bytes\n", (unsigned long)sizeof(char));
+    printf("Size of short: %lu bytes\n", (unsigned long)sizeof(short));
+    printf("Size of int: %lu bytes\n", (unsigned long)sizeof(int));
+    printf("Size of long: %lu bytes\n", (unsigned long)sizeof(long));
+    printf("Size of long long: %lu bytes\n", (unsigned long)sizeof(long long));
+
+    // Unsigned integer types
+    printf("Size of unsigned char: %lu bytes\n", (unsigned long)sizeof(unsigned char));
+    printf("Size of unsigned short: %lu bytes\n", (unsigned long)sizeof(unsigned short));
+    printf("Size of unsigned int: %lu bytes\n", (unsigned long)sizeof(unsigned int));
+    printf("Size of unsigned long: %lu bytes\n", (unsigned long)sizeof(unsigned long));
+    printf("Size of unsigned long long: %lu bytes\n", (unsigned long)sizeof(unsigned long long));
+
+    // Floating-point types
+    printf("Size of float: %lu bytes\n", (unsigned long)sizeof(float));
+    printf("Size of double: %lu bytes\n", (unsigned long)sizeof(double));
+    printf("Size of long double: %lu bytes\n", (unsigned long)sizeof(long double));
+
+    // Other types
+    printf("Size of void*: %lu bytes\n", (unsigned long)sizeof(void*));
+}
