@@ -5,7 +5,7 @@ For this example to work, use beagle firmware with kernel 6.12. Make to to have 
 Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
 ### HOW TO RUN/SETUP
-- For encoder test to work, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
+- To test quadrature encoder reading, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
 - To see PWM work, connect an LED to P9_25.
 - To see SPI7, connect a logic analyzer to P9_28 (CS), P9_31 (CLK) and P9_30 (MOSI).
 - *SCROLL DOWN BELOW for build and execution instructions*
