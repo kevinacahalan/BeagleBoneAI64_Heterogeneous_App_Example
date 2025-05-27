@@ -21,12 +21,14 @@
 #include <io_test_functions/epwm_tests.h>
 #include <io_test_functions/spi_tests.h>
 #include <io_test_functions/eqep_tests.h>
+#include <io_test_functions/uart_tests.h>
 
 volatile int wait_for_debugger = 0;
 
 void do_other_random_things() {
     printf("\n> Inside do_other_random_things()\n");
     run_pwm_test(5);
+    test_uart(BBAI64_UART6_BASE);
 }
 
 
@@ -208,8 +210,8 @@ int main()
     test_bitbang_spi();
 
     test_spi_mcspi7(0);
-
     test_eqep1_with_gpio_encoder_simulation();
+    test_uart(BBAI64_UART6_BASE);
     run_pwm_test(5);
     burn_time_pretending_to_do_stuff(800, 1200);
 

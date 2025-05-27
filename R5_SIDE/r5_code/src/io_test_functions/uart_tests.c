@@ -125,9 +125,12 @@ void test_uart(uint32_t baseAddr) {
     // stop warning for now
     (void)rxBuffer;
 
+    printf("UART TEST...");
+
     // Initialize UART
     UARTInit(baseAddr, moduleClk, baudRate, dataBits, stopBits, parity);
 
     // Send data over UART
     UARTSend(baseAddr, txBuffer, sizeof(txBuffer) - 1);
+    printf("done!\n");
 }
