@@ -114,9 +114,9 @@ uint32_t UARTReceive(uint32_t baseAddr, uint8_t *buffer, uint32_t length) {
 }
 
 void test_uart(uint32_t baseAddr) {
-    uint8_t txBuffer[] = "Hello UART!";
+    uint8_t txBuffer[] = "Hello UART!\n";
     uint8_t rxBuffer[100];
-    uint32_t baudRate = 9600;
+    uint32_t baudRate = 19200;
     uint32_t dataBits = 8;
     uint32_t stopBits = 1;
     uint32_t parity = 0;  // 0: None, 1: Odd, 2: Even

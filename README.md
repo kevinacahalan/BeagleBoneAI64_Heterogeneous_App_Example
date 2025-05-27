@@ -21,7 +21,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
 - **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
 - **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
-- **R5 UART writing**: The string "Hello UART" is now repeatedly printing from UART6_TX. `R5_SIDE/r5_code/include/io_test_functions/uart_tests.h`.
+- **R5 UART writing**: "Hello UART" prints from P9_16 (UART6_TX) at 19200 baud.
 
 ### Implemented but not used by test code yet
 - **Shared Memory**: Linux-R5 memory sharing (`SHARED_CODE/include/shared_mem.h`, `SharedMemoryRegion* sharedMem`). **Warning**: 16-bit aligned reads/writes required to avoid crashes; standard `memcpy()` will crash.
