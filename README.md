@@ -42,8 +42,8 @@ If anybody wants to contribute random stuff, please do.
 
 ### Setup board
 1. Grab debian 6.12 firmware. Flash the emmc, and also an sd card.
-2. Flash emmc with https://www.beagleboard.org/distros/bbai64-debian-12-9-2025-03-05-minimal-flasher-v6-12-x-ti
-3. Flash SD card with https://www.beagleboard.org/distros/bbai64-debian-12-9-2025-03-05-minimal-v6-12-x-ti
+2. Flash emmc with https://www.beagleboard.org/distros/bbai64-debian-12-11-2025-06-30-minimal-flasher-v6-12-x-ti
+3. Flash SD card with https://www.beagleboard.org/distros/bbai64-debian-12-11-2025-06-30-minimal-v6-12-x-ti
 4. Power cycle board several times
 5. Run `df -h` to ensure you are now booting from your SD card
 6. Run this to get latest DT source among other important things `sudo apt update ; sudo apt-get dist-upgrade -y`
@@ -129,6 +129,9 @@ Working FDT set to 88000000
 Working FDT set to 8ffde000
 
 ```
+
+- **Alteratively**, you may simply run the `custom_overlays/setup_dtb.sh` script on your AI64 and have anything done automatically. Be 
+warned, `setup_dtb.sh` will replace the `/boot/firmware/extlinux/extlinux.conf` config file on your board. There is potential for breakage.
 #### Resources:
 
 - You could make use of https://www.ti.com/tool/download/SYSCONFIG to figure out pin muxing when making your own overlays.

@@ -31,3 +31,5 @@ sudo make -C "$DTB_SRC" -f Makefile install_arm64
 sudo cp -rf "$SCRIPT_DIR/kernel6-12-extlinux.conf" "/boot/firmware/extlinux/extlinux.conf"
 
 echo "Device trees setup"
+echo ""
+echo "WARNING! THIS SCRIPT MAY BREAK THINGS...IF YOU ARE USING AN IMAGE FROM BEFORE JULY 2025...RIP"
