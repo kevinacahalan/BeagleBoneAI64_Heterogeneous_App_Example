@@ -81,7 +81,7 @@ tmux new-session -d -s "$SESSION_NAME" -n main
 tmux setw -t "$SESSION_NAME:main" remain-on-exit on
 
 # Pane 1: Start R5 firmware with sudo in the top pane
-tmux send-keys -t "$SESSION_NAME:main.0" "sudo $SCRIPT_DIR/start_firmware_over_remoteproc.sh $J7_MAIN_R5F0_0_rproc_number $SCRIPT_DIR/../R5_SIDE/r5f_r5f0_0.elf || echo 'Failed to start R5 firmware'" C-m
+tmux send-keys -t "$SESSION_NAME:main.0" "sudo $SCRIPT_DIR/start_firmware_over_remoteproc.sh $J7_MAIN_R5F0_0_rproc_number $SCRIPT_DIR/../build/R5_0/r5f_r5f0_0.elf || echo 'Failed to start R5 firmware'" C-m
 tmux split-window -v -t "$SESSION_NAME:main"
 
 # Add 1-second delay before starting the next command
@@ -92,7 +92,7 @@ tmux send-keys -t "$SESSION_NAME:main.1" "sudo $SCRIPT_DIR/print_trace0.py $J7_M
 
 # Pane 3: Start Linux side in the bottom pane with sudo
 tmux split-window -h -t "$SESSION_NAME:main.1"
-tmux send-keys -t "$SESSION_NAME:main.2" "sudo $SCRIPT_DIR/../LINUX_SIDE/build/LINUX_SIDE_aarch64 || echo 'Failed to start linux code'" C-m
+tmux send-keys -t "$SESSION_NAME:main.2" "sudo $SCRIPT_DIR/../build/linux/LINUX_SIDE_aarch64 || echo 'Failed to start linux code'" C-m
 
 # Focus on the top pane (optional)
 tmux select-pane -t "$SESSION_NAME:main.0"

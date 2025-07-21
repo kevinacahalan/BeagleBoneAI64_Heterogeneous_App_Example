@@ -18,7 +18,7 @@ SRCDIR = linux_code/src
 SHARED_SRCDIR = ../SHARED_CODE/src
 SRC_LOCAL = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/rpmsg_char/*.c)
 SRC_SHARED = $(wildcard $(SHARED_SRCDIR)/*.c)
-BUILD_DIR := build
+BUILD_DIR := ../build/linux
 
 RM = /bin/rm -f
 
@@ -27,7 +27,7 @@ OBJ_LOCAL = $(patsubst $(SRCDIR)/%.c, $(BUILD_DIR)/%.$(ARCH).o, $(SRC_LOCAL))
 OBJ_SHARED = $(patsubst $(SHARED_SRCDIR)/%.c, $(BUILD_DIR)/shared/%.$(ARCH).o, $(SRC_SHARED))
 OBJ = $(OBJ_LOCAL) $(OBJ_SHARED)
 
-# Compiler defines (unchanged)
+# Compiler defines
 CFGENERAL = -D_GNU_SOURCE -DARCH='"$(ARCH)"'
 WARNINGS = -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wshadow -fno-common
 STANDARD = -std=c99 -D_POSIX_C_SOURCE=200112L
@@ -36,10 +36,10 @@ CFLAGS := -g -O3 $(WARNINGS) $(STANDARD) $(CFGENERAL) -fmacro-prefix-map=linux_c
 INCLUDES = -Ilinux_code/include -Ilinux_code/include/rpmsg_char -I../SHARED_CODE/include
 DEBUG_CFLAGS := -pedantic -Og -g3 $(WARNINGS) $(STANDARD) $(CFGENERAL) -fmacro-prefix-map=linux_code/=
 
-# Build options (unchanged)
+# Build options
 CUSTOMDEFINES ?= -DLINUX
 
-# Linker defines (unchanged)
+# Linker defines
 LIBPATH := /usr/lib
 ifeq ($(ARCH), x86_64)
 	LIBPATH := -L$(LIBPATH)/x86_64-linux-gnu
@@ -49,13 +49,17 @@ endif
 LIBS += -ldl -lm -lgpiod
 LDFLAGS += $(LIBPATH) $(LIBS) -pthread
 
-# Name (unchanged)
+# Name
 EXE = LINUX_SIDE_$(ARCH)
 
 .PHONY: clean all help
 
 all: $(BUILD_DIR)/$(EXE) Makefile
 	@echo --- LINUX_SIDE compile done
+
+# Rule to create the build directory
+$(BUILD_DIR):
+	@mkdir -p $@
 
 # Compilation rules
 $(BUILD_DIR)/%.$(ARCH).o: $(SRCDIR)/%.c Makefile

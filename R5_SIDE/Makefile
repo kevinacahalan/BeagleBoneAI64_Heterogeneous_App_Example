@@ -1,9 +1,12 @@
-APP ?= r5f_$(CORE).elf
+BUILD_DIR := ../build/R5_0
+APP ?= $(BUILD_DIR)/r5f_$(CORE).elf
+
+# Extract the directory part of the application path
+APP_DIR := $(dir $(APP))
 
 # These cores also go by R5FSS0_CORE0, R5FSS0_CORE1, R5FSS1_CORE0, and R5FSS1_CORE1 elsewhere.
 # And also by mcu2_0, mcu2_1, mcu3_0 and mcu3_1.
 CORE_LIST_MAIN_R5 = r5f0_0 r5f0_1 r5f1_0 r5f1_1
-KERNEL_LIST_ALL = 5 6
 
 CROSS_COMPILE ?= arm-none-eabi-
 
@@ -138,10 +141,14 @@ help:
 
 
 clean:
-	rm -f r5f_*.elf
-	rm -f r5f_*.elf.lst
+	rm -f $(APP)
+	rm -f $(APP).lst
 
-$(APP): $(SRC) $(INCL) gcc.ld Makefile
+# Target to create the build directory
+$(APP_DIR):
+	mkdir -p $@
+
+$(APP): $(APP_DIR) $(SRC) $(INCL) gcc.ld Makefile
 	$(CROSS_CC) $(CFLAGS) --specs=nosys.specs --specs=nano.specs -T gcc.ld -o $(APP) $(SRC) $(LDFLAGS)
 	$(CROSS_SIZE) $(APP)
 	$(CROSS_OBJDUMP) -xd $(APP) > $(APP).lst
