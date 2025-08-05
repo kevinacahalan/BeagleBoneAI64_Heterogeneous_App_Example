@@ -3,6 +3,12 @@
 # It supports options for building on the local development machine, the BeagleBone, or both.
 # It also supports an optional --release flag for release builds, and a --clean flag for cleaning only.
 
+# Check if the script is being run with sudo (as root)
+if [ "$EUID" -eq 0 ]; then
+    echo "Error: This script should not be run with sudo. Please run it as a regular user."
+    exit 1
+fi
+
 SCRIPT_DIR=$(dirname "$0")
 BUILD_TYPE=""
 TARGET=""

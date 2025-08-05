@@ -2,6 +2,12 @@
 # This script builds for the BeagleBone and copies the files to the BeagleBone.
 # It requires the IP address of the BeagleBone to be provided as an argument.
 
+# Check if the script is being run with sudo (as root)
+if [ "$EUID" -eq 0 ]; then
+    echo "Error: This script should not be run with sudo. Please run it as a regular user."
+    exit 1
+fi
+
 SCRIPT_DIR=$(dirname "$0")
 
 BUILD_SCRIPT="$SCRIPT_DIR/build_script.sh --beaglebone"
