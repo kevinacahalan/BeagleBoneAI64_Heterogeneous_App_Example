@@ -183,6 +183,101 @@ TI SysConfig can aid the process of configuring pin muxing, but it comes with a 
 
 - **Default Pin Direction**: TI SysConfig sets all pin muxes to "PIN_INPUT" by default, even for pins that should be outputs. For example, for the SPI6_CLK pin config (which should be an output), TI SysConfig will by default generate `J721E_IOPAD(0x170, PIN_INPUT, 7)` instead of the correct `J721E_IOPAD(0x9c, PIN_OUTPUT, 4)`. PIN_INPUT gives the pin both RX and TX perms. PIN_OUTPUT only gives TX.
 
+### Debugging R5:
+---
+You can debug using OpenOCD with GDB. If configured correctly, you could even do graphical
+debugging with VScode. At some point there will be more detailed instructions here.
+
+Some useful links:
+- Very helpful video https://www.youtube.com/watch?v=n3u3QgnAvV8
+- Debug prob setup, random info https://nmenon.github.io/k3ocd/#j721e-beaglebone-ai64
+- OpenOCD config is here https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
+- OpenOCD and GDB setup and install https://u-boot.readthedocs.io/en/latest/board/ti/k3.html#common-debugging-environment-openocd
+- https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
+- https://forum.beagleboard.org/t/minimal-cortex-r5-example-on-bbai-64/32443/10
+
+
+#### Debug from WSL Debian environment connected to TIAO USB JTAG prob:
+- Setup WSL Debian https://www.microsoft.com/store/productId/9MSVKQC78PK6?ocid=pdpshare
+- Install usbipd from PowerShell `winget install usbipd`
+- Either use the usbipd cli or the vscode extension to connected debug prob to WSL https://marketplace.visualstudio.com/items?itemName=thecreativedodo.usbip-connect
+
+    After successful forwarding to WSL you should see the following when you run lsusb
+    ```bash
+        kevin@computer-name:~/openocd$ lsusb
+        Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+        Bus 001 Device 002: ID 0403:6010 Future Technology Devices International, Ltd FT2232C/D/H Dual UART/FIFO IC
+        Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+    ```
+
+-  Install dependencies
+    ```bash
+    sudo apt-get install libtool pkg-config texinfo libusb-dev libusb-1.0.0-dev libftdi-dev libhidapi-dev autoconf automake lsusb
+    ```
+
+-  Install and configure OpenOCD
+    ```bash
+    git clone https://github.com/openocd-org/openocd.git openocd
+    cd openocd
+    git submodule init
+    git submodule update
+    ./bootstrap
+    ./configure --prefix=/usr/local/
+    make -j`nproc`
+    sudo make install
+    ```
+-   Start OpenOCD
+
+    From `~/bla bla bla/openocd/tcl` run `sudo ../src/openocd -f [path folder with config]/ti_bbai64.cfg` to start OpenOCD using the BBAI64 config. OpenOCD will then tell you the ports for which it is hosting GDB's servers. There is a separate GDB server hosted for each core.
+
+    If you get the error `Error: Invalid ACK (0) in DAP response` jiggle your connection to the board back and forth.
+
+#### Self Hosted debugging (No physical debug prob):
+note: **NOT SURE IF THIS HAS BEEN TESTED OR PROVEN TO WORK...**
+- Install dependencies on BeagleBone
+    ```bash
+    sudo apt-get install libtool pkg-config texinfo libusb-dev libusb-1.0.0-dev libftdi-dev libhidapi-dev autoconf automake
+    ```
+
+- Install and configure OpenOCD on BeagleBone
+    ```bash
+    git clone https://github.com/openocd-org/openocd.git openocd
+    cd openocd
+    git submodule init
+    git submodule update
+    ./bootstrap
+    ./configure --enable-dmem --prefix=/usr/local/
+    make -j`nproc`
+    sudo make install
+    ```
+- Copy the udev rules to the correct system location on BeagleBone
+    ```bash
+    sudo cp ./contrib/60-openocd.rules ./src/jtag/drivers/libjaylink/contrib/99-libjaylink.rules /etc/udev/rules.d/
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    ```
+
+Make sure BeagleBone bootloader firmware version is `8.6.3` or greater. This can be checked
+with `sudo k3conf dump processor`.
+
+From `~/bla bla bla/openocd/tcl` run `sudo ../src/openocd -f ./board/ti_j721e_swd_native.cfg` to start OpenOCD. OpenOCD will then tell you the ports for which it is hosting GDB servers. 
+
+#### Using GDB:
+Connect to GDB server for core on local port #### `gdb-multiarch -ex 'target extended-remote localhost:####' -ex 'set arch armv7' -ex 'file ~/PATH_TO_ELF/r5f_r5f0_0.elf'`. OpenOCD will tell you which cores are on which ports.
+
+That ELF in that last option `-ex 'file ~/PATH_TO_ELF/r5f_r5f0_0.elf'` should be the same as the ELF currently running on the 
+core that you're planning to debug. GDB uses the debug info from that ELF. Without the debug info you would be lost looking at bare assembly.
+
+**WARNING**, MAKE SURE THAT THE ELF THAT YOU USE FOR DEBUG INFO IS THE SAME... In other words, if the ELF that you are running was compiled on the Beaglebone, DO NOT use an ELF you compiled on your development machine for debug info.
+
+
+The debugger can only connect to a core while it is on and not in a halted/crashed state. When debugging broken firmware, after each crash you may need to start the R5 core into a nice clean state from linux with remoteproc. Make sure to alway have a working firmware on hand for core startup and reset. 
+
+When the BeagleBone starts up, the R5 cores are in some halted state and thus can not be connected to by OpenOCD/GDB.
+
+#### Using VScode with GDB for a graphic debugging experience:
+Know that this is possible, the instructions will be written at some point. VScode setup is slightly covered in this
+video https://www.youtube.com/watch?v=n3u3QgnAvV8.
 
 
 ### Useful Commands
