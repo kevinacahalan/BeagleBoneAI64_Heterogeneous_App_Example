@@ -19,7 +19,7 @@
 #include "../../../SHARED_CODE/include/random_utils.h"
 
 #include <ti_rpmsg_char.h>
-#include <rpmsg_char_simple.h>
+#include <rpmsg_char_example.h>
 
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
@@ -141,6 +141,7 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
         // return -EPERM;
     }
 
+    // Sit in loop attempting to crate rpmsg endpoint device
     for (int i = 0 ; !rcdev ; i++) {
         sleep(2);
         printf("ATTEMPT #%d\n", i);
@@ -187,7 +188,7 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
 /*
  * Main function for the Linux side RPC example.
  */
-int rpmsg_char_simple_main(void)
+int rpmsg_char_example_main(void)
 {
     int ret, status;
     int rproc_id = R5F_MAIN0_0; // 2, THIS IS HOW LINUX KNOWS WHICH R5 TO TALK TO!!

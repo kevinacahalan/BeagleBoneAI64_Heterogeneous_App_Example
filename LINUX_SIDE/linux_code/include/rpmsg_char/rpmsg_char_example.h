@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-int rpmsg_char_simple_main(void);
+int rpmsg_char_example_main(void);
 
 #if defined(__cplusplus)
 }
