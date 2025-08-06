@@ -243,6 +243,7 @@ https://docs.zephyrproject.org/latest/boards/beagle/beaglebone_ai64/doc/index.ht
 
 #### Other
 - **[The PRU Development Kit](https://git.ti.com/cgit/pru-software-support-package/pru-software-support-package/)**: TI’s PRU software support package for development.
+- **[ti-rpmsg-char](https://git.ti.com/cgit/rpmsg/ti-rpmsg-char/tree/)**: TI rpmsg-char utility library with example code. (The rpmsg_char source we are using on the linux side was taken from here)
 - **[Beagle Images](https://www.beagleboard.org/distros)**: Release images.
 - **[Random Beagle Images](https://rcn-ee.com/rootfs/)**: Random images.
 
