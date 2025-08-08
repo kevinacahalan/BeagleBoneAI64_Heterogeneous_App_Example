@@ -23,6 +23,37 @@
 
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
+// static for now, will change hopefully
+static int send_msg(int fd, void *msg, int len)
+{
+	int ret = 0;
+
+	ret = write(fd, msg, len);
+	if (ret < 0) {
+		perror("Can't write to rpmsg endpt device\n");
+		return -1;
+	}
+
+	return ret;
+}
+
+// static for now, will change hopefully
+static int recv_msg(int fd, int len, void *reply_msg, int *reply_len)
+{
+	int ret = 0;
+
+	/* Note: len should be max length of response expected */
+	ret = read(fd, reply_msg, len);
+	if (ret < 0) {
+		perror("Can't read from rpmsg endpt device\n");
+		return -1;
+	} else {
+		*reply_len = ret;
+	}
+
+	return 0;
+}
+
 static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
     int ret = rpmsg_char_close(rcdev);
     if (ret < 0)
@@ -67,7 +98,8 @@ static void handle_request_linux(MESSAGE *req_msg, rpmsg_char_dev_t *rcdev) {
     // This delay may potentially kickoff lockups if code elsewhere is not robust enough
     burn_time_pretending_to_do_stuff(800, 1200);
 
-    int ret = write(rcdev->fd, &response_msg, sizeof(MESSAGE));
+    int ret = send_msg(rcdev->fd, &response_msg, sizeof(MESSAGE));
+    // int ret = write(rcdev->fd, &response_msg, sizeof(MESSAGE));
 
     if (req->function_tag == FUNCTION_X){
         printf("Sent response with rt=%f to R5 for tag %d, FUNCTION_X \n", response_msg.data.response.result.result_function_x, (int)(req->function_tag));
@@ -94,7 +126,8 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     req_msg.data.request.params.function_a.a = a;
     req_msg.data.request.params.function_a.b = b;
 
-    int ret = write(rcdev->fd, &req_msg, sizeof(MESSAGE));
+    int ret = send_msg(rcdev->fd, &req_msg, sizeof(MESSAGE));
+    // int ret = write(rcdev->fd, &req_msg, sizeof(MESSAGE));
     if (ret < 0) {
         perror("Linux: Failed to send request");
         return 0;
@@ -103,8 +136,10 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     // Wait for response, processing other requests
     while (1) {
         MESSAGE resp_msg;
-        ret = read(rcdev->fd, &resp_msg, sizeof(MESSAGE));
-        if (ret == sizeof(MESSAGE)) {
+        int reply_len = 0;
+        ret = recv_msg(rcdev->fd, sizeof(MESSAGE), &resp_msg, &reply_len);
+        // ret = read(rcdev->fd, &resp_msg, sizeof(MESSAGE));
+        if (!ret && reply_len == sizeof(MESSAGE)) {
             if (resp_msg.tag == MESSAGE_RESPONSE && resp_msg.request_id == request_id) {
                 if (resp_msg.data.response.function_tag == FUNCTION_A) {
                     return resp_msg.data.response.result.result_function_a;
@@ -161,13 +196,18 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name,
     while (1) {
         MESSAGE msg;
         // If there is no message, I get hung on this read. I would like linux to continue on if there is no message
-        int ret = read(rcdev->fd, &msg, sizeof(MESSAGE));
-        if (ret == sizeof(MESSAGE)) {
+        // int ret = read(rcdev->fd, &msg, sizeof(MESSAGE)); // FIXME REPLACE
+        int reply_len = 0;
+        int ret = recv_msg(rcdev->fd, sizeof(MESSAGE), &msg, &reply_len);
+        if (!ret && reply_len == sizeof(MESSAGE)) {
             if (msg.tag == MESSAGE_REQUEST) {
                 handle_request_linux(&msg, rcdev);
             } else if (msg.tag == MESSAGE_RESPONSE) {
                 printf("Linux: Received response for request_id %u\n", msg.request_id);
             }
+        } else if (ret < 0) {
+            perror("Linux: Read error");
+            break;
         } else {
             printf("read returned %d\n", ret);
         }
