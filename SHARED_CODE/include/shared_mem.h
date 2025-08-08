@@ -47,9 +47,7 @@ extern void deinit_shared_mem(void);
 
 
 extern volatile SharedMemoryRegion* sharedMem;
+#endif
 
 
 #endif // SHARED_MEM_H
-
-
-#endif
