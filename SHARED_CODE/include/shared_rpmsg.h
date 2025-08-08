@@ -1,3 +1,6 @@
+#ifndef SHARED_RPMSG_H
+#define SHARED_RPMSG_H
+
 #define RPMSG_CHAR_DEVICE_NAME "rpmsg_chrdev" // No idea what is up with this magic string
 #define RPMSG_CHAR_ENDPOINT 14U // or this magic number
 
@@ -17,6 +20,18 @@ typedef enum {
     FUNCTION_X = 3,    // Takes an int, returns a float (on Linux)
     FUNCTION_Y = 4,    // Takes a float, returns an int (on Linux)
 } FUNCTION_TAG;
+
+// Really should be put in shared_rpmsg.c ...
+static const char* function_names[] = {
+    "FUNCTION_UNKNOWN",
+    "FUNCTION_A",
+    "FUNCTION_B",
+    "FUNCTION_X",
+    "FUNCTION_Y"
+};
+static inline const char* function_tag_to_string(FUNCTION_TAG tag) {
+    return function_names[tag];
+}
 
 typedef struct {
     FUNCTION_TAG function_tag;
@@ -62,3 +77,4 @@ typedef struct {
     } data;
 } MESSAGE;
 
+#endif // SHARED_RPMSG_H

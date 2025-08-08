@@ -36,13 +36,11 @@ void do_other_random_things() {
 
 int function_a(int a, int b) {
     int rt = a + b;
-    printf("function_a: Got %d and %d from linux call, sending back %d\n", a, b, rt);
     return rt;
 }
 
 float function_b(float a, float b, float c) {
     float rt = a + b + c;
-    printf("function_b: Got %f, %f, and %f from linux call, sending back %f\n", a, b, c, rt);
     return rt;
 }
 
@@ -57,10 +55,12 @@ void handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt,
         case FUNCTION_A:
             response_msg.data.response.result.result_function_a = 
                 function_a(req->params.function_a.a, req->params.function_a.b);
+            printf("%s: Got %d and %d from linux call, sending back %d\n", function_tag_to_string(req->function_tag), req->params.function_a.a, req->params.function_a.b, response_msg.data.response.result.result_function_a);
             break;
         case FUNCTION_B:
             response_msg.data.response.result.result_function_b = 
                 function_b(req->params.function_b.a, req->params.function_b.b, req->params.function_b.c);
+            printf("%s: Got %f, %f, and %f from linux call, sending back %f\n", function_tag_to_string(req->function_tag), req->params.function_b.a, req->params.function_b.b, req->params.function_b.c, response_msg.data.response.result.result_function_b);
             break;
         default:
             printf("R5: Unknown function tag %d\n", req->function_tag);
@@ -103,7 +103,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         if (status == IPC_SOK && rxLen == sizeof(MESSAGE)) {
             if (resp_msg.tag == MESSAGE_RESPONSE && resp_msg.request_id == request_id) {
                 if (resp_msg.data.response.function_tag == FUNCTION_X) {
-                    printf("GOT RETURN VALUE %f from linux function with tag %d\n", resp_msg.data.response.result.result_function_x, resp_msg.data.response.function_tag);
+                    printf("GOT RETURN VALUE %f from linux function with tag %s\n", resp_msg.data.response.result.result_function_x, function_tag_to_string(resp_msg.data.response.function_tag));
                     return resp_msg.data.response.result.result_function_x;
                 } else {
                     printf("R5: Mismatched function tag %d in response\n", resp_msg.data.response.function_tag);
