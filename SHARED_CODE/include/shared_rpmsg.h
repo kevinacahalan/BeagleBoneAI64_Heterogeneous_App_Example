@@ -9,6 +9,7 @@ typedef enum {
     MESSAGE_UNKNOWN = 0,
     MESSAGE_REQUEST = 1,
     MESSAGE_RESPONSE = 2,
+    MESSAGE_COMMAND = 3,
 } MESSAGE_TAG;
 
 typedef enum {
