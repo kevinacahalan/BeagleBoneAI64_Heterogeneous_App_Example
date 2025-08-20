@@ -76,19 +76,19 @@ static void handle_request_linux(MESSAGE *req_msg, rpmsg_char_dev_t *rcdev) {
             resp.data.response.result.result_function_y = linux_function_y(req->params.function_y.param);
             break;
         default:
-            fprintf(stderr, "Linux: Unknown function tag %d\n", req->function_tag);
+            fprintf(stderr, "Linux: Unknown function tag %s\n", function_tag_to_string(req->function_tag));
             return;
     }
 
     burn_time_pretending_to_do_stuff(800, 1200);  // Simulate work
     send_msg(rcdev->fd, &resp, sizeof(MESSAGE));
-    printf("Linux: Sent response for tag %d\n", req->function_tag);
+    printf("Linux: Sent response for tag %s\n", function_tag_to_string(req->function_tag));
 }
 
 // Handle incoming command (non-blocking, no response)
 static void handle_command_linux(MESSAGE *cmd_msg) {
     // Example: Just log or perform action without response
-    printf("Linux: Received non-blocking command with tag %d\n", cmd_msg->data.request.function_tag);
+    printf("Linux: Received non-blocking command with tag %s\n", function_tag_to_string(cmd_msg->data.request.function_tag));
     // Add logic for command-specific actions here
 }
 
@@ -122,6 +122,10 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
                 handle_request_linux(&msg, rcdev);  // Handle concurrent request
             } else if (msg.tag == MESSAGE_COMMAND) {
                 handle_command_linux(&msg);  // Handle concurrent command
+            } else if (msg.tag == MESSAGE_RESPONSE) {
+                // printf("R5: Received unexpected response (request_id %lu)\n", msg.request_id);  // Comment out or make verbose-only
+                // Optional: Add a queue for pending responses if you want to match later, but for now, log quietly
+                printf("R5: Note: Orphaned response id %u (from prior call)\n", msg.request_id);
             }
         }
         usleep(10000);  // Small sleep to avoid CPU spin
@@ -184,7 +188,7 @@ static void send_command_a_nonblocking(rpmsg_char_dev_t *rcdev, int a, int b) {
 // Main RPC loop
 static int rpmsg_char_rpc(int rproc_id, char *dev_name, unsigned int local_endpt, unsigned int remote_endpt) {
     char eptdev_name[64];
-    snprintf(eptdev_name, sizeof(eptdev_name), "eptdev_name_rpmsg-char-%d-%d", rproc_id, getpid());
+    snprintf(eptdev_name, sizeof(eptdev_name), "eptdev_name_rpmsg%d-%d", rproc_id, getpid());
 
     rpmsg_char_dev_t *rcdev = rpmsg_char_open(rproc_id, dev_name, local_endpt, remote_endpt, eptdev_name, 0);
     while (!rcdev) {
@@ -196,6 +200,11 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name, unsigned int local_endpt
     // Set non-blocking
     int flags = fcntl(rcdev->fd, F_GETFL, 0);
     fcntl(rcdev->fd, F_SETFL, flags | O_NONBLOCK);
+
+    MESSAGE ping = {0};
+    ping.tag = MESSAGE_PING;
+    send_msg(rcdev->fd, &ping, sizeof(MESSAGE));
+    printf("Linux: Sent startup ping\n");
 
     // Main loop: Poll for messages, make example calls
     while (1) {

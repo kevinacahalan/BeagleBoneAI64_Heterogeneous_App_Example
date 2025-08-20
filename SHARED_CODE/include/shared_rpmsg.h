@@ -10,7 +10,21 @@ typedef enum {
     MESSAGE_REQUEST = 1,
     MESSAGE_RESPONSE = 2,
     MESSAGE_COMMAND = 3,
+    MESSAGE_PING = 4,
 } MESSAGE_TAG;
+
+// Really should be put in shared_rpmsg.c ...
+static const char* message_tag_names[] = {
+    "MESSAGE_UNKNOWN",
+    "MESSAGE_REQUEST",
+    "MESSAGE_RESPONSE",
+    "MESSAGE_COMMAND",
+    "MESSAGE_PING"
+};
+static inline const char* message_tag_to_string(MESSAGE_TAG tag) {
+    return message_tag_names[tag];
+}
+
 
 typedef enum {
     FUNCTION_UNKNOWN = 0,
@@ -23,7 +37,7 @@ typedef enum {
 } FUNCTION_TAG;
 
 // Really should be put in shared_rpmsg.c ...
-static const char* function_names[] = {
+static const char* function_tag_names[] = {
     "FUNCTION_UNKNOWN",
     "FUNCTION_A",
     "FUNCTION_B",
@@ -31,7 +45,7 @@ static const char* function_names[] = {
     "FUNCTION_Y"
 };
 static inline const char* function_tag_to_string(FUNCTION_TAG tag) {
-    return function_names[tag];
+    return function_tag_names[tag];
 }
 
 typedef struct {
