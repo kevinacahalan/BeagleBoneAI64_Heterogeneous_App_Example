@@ -80,7 +80,7 @@ static void handle_request_linux(MESSAGE *req_msg, rpmsg_char_dev_t *rcdev) {
             return;
     }
 
-    burn_time_pretending_to_do_stuff(800, 1200);  // Simulate work
+    burn_time_pretending_to_do_stuff(80, 500);  // Simulate work
     send_msg(rcdev->fd, &resp, sizeof(MESSAGE));
     printf("Linux: Sent response for tag %s\n", function_tag_to_string(req->function_tag));
 }
@@ -107,6 +107,7 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     if (send_msg(rcdev->fd, &req, sizeof(MESSAGE)) < 0) {
         return -1;
     }
+    printf("Linux: Sent blocking call for %s\n", function_tag_to_string(req.data.request.function_tag));
 
     time_t start = time(NULL);
     while (time(NULL) - start < 5) {  // 5s timeout
@@ -115,7 +116,7 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
         if (recv_msg(rcdev->fd, &msg, sizeof(MESSAGE), &len) == 0 && len == sizeof(MESSAGE)) {
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
                 if (msg.data.response.function_tag == FUNCTION_A) {
-                    printf("Linux: Got response for FUNCTION_A: %d\n", msg.data.response.result.result_function_a);
+                    printf("Linux: RESPONSE RECEIVED!! from blocking %s: %d\n", function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_a);
                     return msg.data.response.result.result_function_a;
                 }
             } else if (msg.tag == MESSAGE_REQUEST) {
@@ -150,6 +151,7 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
     if (send_msg(rcdev->fd, &req, sizeof(MESSAGE)) < 0) {
         return -1.0f;
     }
+    printf("Linux: Sent blocking call for %s\n", function_tag_to_string(req.data.request.function_tag));
 
     time_t start = time(NULL);
     while (time(NULL) - start < 5) {
@@ -158,7 +160,8 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
         if (recv_msg(rcdev->fd, &msg, sizeof(MESSAGE), &len) == 0 && len == sizeof(MESSAGE)) {
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
                 if (msg.data.response.function_tag == FUNCTION_B) {
-                    printf("Linux: Got response for FUNCTION_B: %f\n", msg.data.response.result.result_function_b);
+                    // printf("Linux: Got response for FUNCTION_B: %f\n", msg.data.response.result.result_function_b);
+                    printf("Linux: RESPONSE RECEIVED!! from blocking %s: %f\n", function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_b);
                     return msg.data.response.result.result_function_b;
                 }
             } else if (msg.tag == MESSAGE_REQUEST) {
@@ -169,7 +172,7 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
         }
         usleep(10000);
     }
-    fprintf(stderr, "Linux: Timeout waiting for FUNCTION_B response\n");
+    fprintf(stderr, "Linux: RESPONSE FAILURE!!, Timeout waiting for FUNCTION_B response\n");
     return -1.0f;
 }
 

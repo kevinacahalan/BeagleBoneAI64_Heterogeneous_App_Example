@@ -127,7 +127,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
     }
 
     uint64_t start = get_gtc_as_u64seconds();  // Use OSAL timer or similar
-    while (get_gtc_as_u64seconds() - start < 5) {
+    while (get_gtc_as_u64seconds() - start < 10) {
     MESSAGE msg;
         uint16_t len = sizeof(MESSAGE);
         uint32_t srcEndPt = remoteEndPt;
@@ -136,7 +136,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         if (status == IPC_SOK && len == sizeof(MESSAGE)) {
             printf("R5: Polled msg tag=%s, id=%lu during wait\n", message_tag_to_string(msg.tag), msg.request_id);  // Debug
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
-                // Your match logic
+                printf("R5: RESPONSE RECEIVED!! from blocking %s\n", function_tag_to_string(msg.data.response.function_tag));
             } else if (msg.tag == MESSAGE_REQUEST) {
                 handle_request(&msg, handle, myEndPt, srcEndPt, srcProc);
             } else if (msg.tag == MESSAGE_COMMAND) {
@@ -151,7 +151,7 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         }
         Osal_delay(1);  // Tighter poll
     }
-    printf("R5: Timeout waiting for FUNCTION_X response\n");
+    printf("R5: RESPONSE FAILURE!!, Timeout waiting for FUNCTION_X response\n");
     return -1.0f;
 }
 
@@ -207,9 +207,9 @@ int32_t start_listing_to_linux(void) {
 
     // Wait for first message to resolve endpoints
     printf("R5: Waiting for handshake...\n");
-    uint64_t timeout_usec = 10;
+    uint64_t timeout_sec = 10;
     uint64_t start = get_gtc_as_u64seconds();
-    while (get_gtc_as_u64seconds() - start < timeout_usec) {
+    while (get_gtc_as_u64seconds() - start < timeout_sec) {
         MESSAGE msg;
         uint16_t len = sizeof(MESSAGE);
         int32_t status = RPMessage_recvNb(handle, &msg, &len, &remoteEndPt, &remoteProcId);
