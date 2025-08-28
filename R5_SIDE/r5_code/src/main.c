@@ -98,7 +98,7 @@ void handle_command(MESSAGE *cmd_msg) {
         default:
             printf("R5: Unknown command tag %s\n", function_tag_to_string(cmd_msg->data.request.function_tag));
     }
-    printf("R5: Handled non-blocking command\n");
+    printf("R5: Handled non-blocking command %s\n", function_tag_to_string(cmd_msg->data.request.function_tag));
 }
 
 // Blocking call to Linux function X

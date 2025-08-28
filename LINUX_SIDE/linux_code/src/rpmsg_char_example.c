@@ -19,6 +19,8 @@
 #include <rpmsg_char_example.h>
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
+static uint32_t req_id_counter = 1;
+
 // Helpers for send/recv
 static int send_msg(int fd, void *msg, int len) {
     int ret = write(fd, msg, len);
@@ -94,7 +96,6 @@ static void handle_command_linux(MESSAGE *cmd_msg) {
 
 // Blocking call to R5 function A
 static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
-    static uint32_t req_id_counter = 1;
     uint32_t req_id = req_id_counter++;
 
     MESSAGE req = {0};
@@ -129,7 +130,7 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
                 printf("R5: Note: Orphaned response id %u (from prior call)\n", msg.request_id);
             }
         }
-        usleep(10000);  // Small sleep to avoid CPU spin
+        // usleep(5000);  //
     }
     fprintf(stderr, "Linux: Timeout waiting for FUNCTION_A response\n");
     return -1;
@@ -137,7 +138,6 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
 
 // Blocking call to R5 function B (fixed bug)
 static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b, float c) {
-    static uint32_t req_id_counter = 1;
     uint32_t req_id = req_id_counter++;
 
     MESSAGE req = {0};
@@ -170,7 +170,7 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
                 handle_command_linux(&msg);
             }
         }
-        usleep(10000);
+        // usleep(5000);
     }
     fprintf(stderr, "Linux: RESPONSE FAILURE!!, Timeout waiting for FUNCTION_B response\n");
     return -1.0f;
