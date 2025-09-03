@@ -34,6 +34,8 @@ void do_other_random_things() {
 
 // MAKE SURE TO ADD YOUR FUNCTIONS TO request_tagged_union_t in SHARED_CODE/include/shared_rpmsg.h
 
+static uint32_t req_id_counter = 1;
+
 // Example R5 functions callable from Linux
 int function_a(int a, int b) {
     int rt = a + b;
@@ -43,7 +45,7 @@ int function_a(int a, int b) {
 
 float function_b(float a, float b, float c) {
     float rt = a + b + c;
-    // printf("R5 function_b: Got %f,%f,%f from Linux, returning %f\n", a, b, c, rt);
+    // printf("R5 function_b: Got %.3f,%.3f,%.3f from Linux, returning %.3f\n", a, b, c, rt);
     return rt;
 }
 
@@ -58,14 +60,14 @@ int handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt, 
     switch (req->function_tag) {
         case FUNCTION_A:
             resp.data.response.result.result_function_a = function_a(req->params.function_a.a, req->params.function_a.b);
-            printf("%s: Got %d and %d from linux call, sending back %d\n", function_tag_to_string(req->function_tag), req->params.function_a.a, req->params.function_a.b, resp.data.response.result.result_function_a);
+            printf("R5: id=%-4ld %s: Got %d and %d from linux call, sending back %d\n", resp.request_id, function_tag_to_string(req->function_tag), req->params.function_a.a, req->params.function_a.b, resp.data.response.result.result_function_a);
             break;
         case FUNCTION_B:
             resp.data.response.result.result_function_b = function_b(req->params.function_b.a, req->params.function_b.b, req->params.function_b.c);
-            printf("%s: Got %f, %f, and %f from linux call, sending back %f\n", function_tag_to_string(req->function_tag), req->params.function_b.a, req->params.function_b.b, req->params.function_b.c, resp.data.response.result.result_function_b);
+            printf("R5: id=%-4ld %s: Got %.3f, %.3f, and %.3f from linux call, sending back %.3f\n", resp.request_id, function_tag_to_string(req->function_tag), req->params.function_b.a, req->params.function_b.b, req->params.function_b.c, resp.data.response.result.result_function_b);
             break;
         default:
-            printf("R5: Unknown request tag %s\n", function_tag_to_string(req->function_tag));
+            printf("R5: id=%-4ld Unknown request tag %s\n", resp.request_id, function_tag_to_string(req->function_tag));
             return -1;
     }
 
@@ -73,7 +75,7 @@ int handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt, 
     int32_t status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &resp, sizeof(MESSAGE));
 
     if (status != IPC_SOK) {
-        printf("R5: Send failed (%ld); retrying once...\n", status);
+        printf("R5: id=%-4ld Send failed (%ld); retrying once...\n", resp.request_id, status);
         Osal_delay(500);
         status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &resp, sizeof(MESSAGE));  // Simple retry
         if (status != IPC_SOK) 
@@ -81,7 +83,7 @@ int handle_request(MESSAGE *req_msg, RPMessage_Handle handle, uint32_t myEndPt, 
     }
     
     if (status != IPC_SOK) {
-        printf("R5: Send response failed (%ld)\n", status);
+        printf("R5: id=%-4ld Send response failed (%ld)\n", resp.request_id, status);
     }
 
     return 0;
@@ -96,14 +98,13 @@ void handle_command(MESSAGE *cmd_msg) {
             break;
         // Add others...
         default:
-            printf("R5: Unknown command tag %s\n", function_tag_to_string(cmd_msg->data.request.function_tag));
+            printf("R5: id=%-4ld Unknown command tag %s\n", cmd_msg->request_id, function_tag_to_string(cmd_msg->data.request.function_tag));
     }
-    printf("R5: Handled non-blocking command %s\n", function_tag_to_string(cmd_msg->data.request.function_tag));
+    printf("R5: id=%-4ld Handled non-blocking command %s\n", cmd_msg->request_id, function_tag_to_string(cmd_msg->data.request.function_tag));
 }
 
 // Blocking call to Linux function X
 float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
-    static uint32_t req_id_counter = 1;
     uint32_t req_id = req_id_counter++;
 
     MESSAGE req = {0};
@@ -134,9 +135,10 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         uint32_t srcProc = remoteProcId;
         status = RPMessage_recvNb(handle, &msg, &len, &srcEndPt, &srcProc);
         if (status == IPC_SOK && len == sizeof(MESSAGE)) {
-            printf("R5: Polled msg tag=%s, id=%lu during wait\n", message_tag_to_string(msg.tag), msg.request_id);  // Debug
+            printf("R5: id=%-4ld Polled msg tag=%s, id=%lu during wait\n", msg.request_id, message_tag_to_string(msg.tag), msg.request_id);  // Debug
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
-                printf("R5: RESPONSE RECEIVED!! from blocking %s\n", function_tag_to_string(msg.data.response.function_tag));
+                printf("R5: id=%-4ld RESPONSE RECEIVED!! from blocking %s: %.3f\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_x);
+                return msg.data.response.result.result_function_x;
             } else if (msg.tag == MESSAGE_REQUEST) {
                 handle_request(&msg, handle, myEndPt, srcEndPt, srcProc);
             } else if (msg.tag == MESSAGE_COMMAND) {
@@ -144,14 +146,14 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
             } else {
                 // Queue or ignore others
             }
-            remoteEndPt = srcEndPt;  // Always update
-            remoteProcId = srcProc;
+            remoteEndPt = srcEndPt;  // Always update...  WHY?!?!
+            remoteProcId = srcProc; // Always update...  WHY?!?!
         } else if (status != IPC_ETIMEOUT) {
-            printf("R5: Poll error %ld\n", status);
+            printf("R5: id=%-4ld Poll error %ld\n", msg.request_id, status);
         }
         Osal_delay(1);  // Tighter poll
     }
-    printf("R5: RESPONSE FAILURE!!, Timeout waiting for FUNCTION_X response\n");
+    printf("R5: id=%-4ld RESPONSE FAILURE!!, Timeout waiting for %s response\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
     return -1.0f;
 }
 
@@ -164,14 +166,14 @@ int send_command_x_nonblocking(RPMessage_Handle handle, uint32_t myEndPt, uint32
 
     int32_t status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &cmd, sizeof(MESSAGE));
     if (status != IPC_SOK) {
-        printf("R5: Send failed (%ld); retrying once...\n", status);
+        printf("R5: id=%-4ld Send failed (%ld); retrying once...\n", cmd.request_id, status);
         Osal_delay(500);
         status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &cmd, sizeof(MESSAGE));  // Simple retry
         if (status != IPC_SOK) 
         return -1; // eh fixme
     }
     
-    printf("R5: Sent non-blocking command for FUNCTION_X\n");
+    printf("R5: id=%-4ld Sent non-blocking command for %s\n", cmd.request_id, function_tag_to_string(cmd.data.request.function_tag));
     return 0; 
 }
 
@@ -191,9 +193,9 @@ int process_one_message(RPMessage_Handle handle, uint32_t myEndPt, uint32_t *rem
     } else if (msg.tag == MESSAGE_COMMAND) {
         handle_command(&msg);
     } else if (msg.tag == MESSAGE_RESPONSE) {
-        printf("R5: Received unexpected response (request_id %lu)\n", msg.request_id);
+        printf("R5: id=%lu Received unexpected response\n", msg.request_id);
     } else {
-        printf("R5: Unknown tag %d\n", msg.tag);
+        printf("R5: id=%lu Unknown tag %d\n", msg.request_id, msg.tag);
     }
     return IPC_SOK;
 }
@@ -239,11 +241,13 @@ int32_t start_listing_to_linux(void) {
 
         // Example blocking call
         call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 16);
+        call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 32);
 
         // Example non-blocking command
         send_command_x_nonblocking(handle, myEndPt, remoteEndPt, remoteProcId, 32);
 
         burn_time_pretending_to_do_stuff(800, 1200);
+        call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 64);
     }
     return 0;
 }

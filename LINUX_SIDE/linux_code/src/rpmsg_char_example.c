@@ -52,13 +52,11 @@ static int rpmsg_cleanup(rpmsg_char_dev_t *rcdev) {
 // Example Linux functions callable from R5
 static float linux_function_x(int param) {
     float rt = param * 1.5f;
-    printf("linux_function_x: Got %d from R5, returning %f\n", param, rt);
     return rt;
 }
 
 static int linux_function_y(float param) {
     int rt = (int)(param * 2.0f);
-    printf("linux_function_y: Got %f from R5, returning %d\n", param, rt);
     return rt;
 }
 
@@ -73,24 +71,26 @@ static void handle_request_linux(MESSAGE *req_msg, rpmsg_char_dev_t *rcdev) {
     switch (req->function_tag) {
         case FUNCTION_X:
             resp.data.response.result.result_function_x = linux_function_x(req->params.function_x.param);
+            printf("Linux: id=%-4d linux_function_x: Got %d from R5, returning %.3f\n", req_msg->request_id, req->params.function_x.param, resp.data.response.result.result_function_x);
             break;
         case FUNCTION_Y:
             resp.data.response.result.result_function_y = linux_function_y(req->params.function_y.param);
+            printf("Linux: id=%-4d linux_function_y: Got %.3f from R5, returning %d\n", req_msg->request_id, req->params.function_y.param, resp.data.response.result.result_function_y);
             break;
         default:
-            fprintf(stderr, "Linux: Unknown function tag %s\n", function_tag_to_string(req->function_tag));
+            fprintf(stdout, "Linux: id=%-4d Unknown function tag %s\n", resp.request_id, function_tag_to_string(req->function_tag));
             return;
     }
 
     burn_time_pretending_to_do_stuff(80, 500);  // Simulate work
     send_msg(rcdev->fd, &resp, sizeof(MESSAGE));
-    printf("Linux: Sent response for tag %s\n", function_tag_to_string(req->function_tag));
+    printf("Linux: id=%-4d Sent response for tag %s\n", resp.request_id, function_tag_to_string(req->function_tag));
 }
 
 // Handle incoming command (non-blocking, no response)
 static void handle_command_linux(MESSAGE *cmd_msg) {
     // Example: Just log or perform action without response
-    printf("Linux: Received non-blocking command with tag %s\n", function_tag_to_string(cmd_msg->data.request.function_tag));
+    printf("Linux: id=%-4d Received non-blocking command with tag %s\n", cmd_msg->request_id, function_tag_to_string(cmd_msg->data.request.function_tag));
     // Add logic for command-specific actions here
 }
 
@@ -108,7 +108,7 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     if (send_msg(rcdev->fd, &req, sizeof(MESSAGE)) < 0) {
         return -1;
     }
-    printf("Linux: Sent blocking call for %s\n", function_tag_to_string(req.data.request.function_tag));
+    printf("Linux: id=%-4d Sent blocking call for %s\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
 
     time_t start = time(NULL);
     while (time(NULL) - start < 5) {  // 5s timeout
@@ -117,8 +117,10 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
         if (recv_msg(rcdev->fd, &msg, sizeof(MESSAGE), &len) == 0 && len == sizeof(MESSAGE)) {
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
                 if (msg.data.response.function_tag == FUNCTION_A) {
-                    printf("Linux: RESPONSE RECEIVED!! from blocking %s: %d\n", function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_a);
+                    printf("Linux: id=%-4d RESPONSE RECEIVED!! from blocking %s: %d\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_a);
                     return msg.data.response.result.result_function_a;
+                } else {
+                    printf("Linux: id=%-4d BAD!!!! RESPONSE RECEIVED for unexpected function %s\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag));
                 }
             } else if (msg.tag == MESSAGE_REQUEST) {
                 handle_request_linux(&msg, rcdev);  // Handle concurrent request
@@ -127,16 +129,16 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
             } else if (msg.tag == MESSAGE_RESPONSE) {
                 // printf("R5: Received unexpected response (request_id %lu)\n", msg.request_id);  // Comment out or make verbose-only
                 // Optional: Add a queue for pending responses if you want to match later, but for now, log quietly
-                printf("R5: Note: Orphaned response id %u (from prior call)\n", msg.request_id);
+                printf("linux: Note: Orphaned response id %u (from prior call)\n", msg.request_id);
             }
         }
         // usleep(5000);  //
     }
-    fprintf(stderr, "Linux: Timeout waiting for FUNCTION_A response\n");
+    fprintf(stdout, "Linux: id=%-4d RESPONSE FAILURE!!, Timeout waiting for %s response\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
     return -1;
 }
 
-// Blocking call to R5 function B (fixed bug)
+// Blocking call to R5 function B
 static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b, float c) {
     uint32_t req_id = req_id_counter++;
 
@@ -151,7 +153,7 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
     if (send_msg(rcdev->fd, &req, sizeof(MESSAGE)) < 0) {
         return -1.0f;
     }
-    printf("Linux: Sent blocking call for %s\n", function_tag_to_string(req.data.request.function_tag));
+    printf("Linux: id=%-4d Sent blocking call for %s\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
 
     time_t start = time(NULL);
     while (time(NULL) - start < 5) {
@@ -160,32 +162,40 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
         if (recv_msg(rcdev->fd, &msg, sizeof(MESSAGE), &len) == 0 && len == sizeof(MESSAGE)) {
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
                 if (msg.data.response.function_tag == FUNCTION_B) {
-                    // printf("Linux: Got response for FUNCTION_B: %f\n", msg.data.response.result.result_function_b);
-                    printf("Linux: RESPONSE RECEIVED!! from blocking %s: %f\n", function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_b);
+                    // printf("Linux: Got response for FUNCTION_B: %.3f\n", msg.data.response.result.result_function_b);
+                    printf("Linux: id=%-4d RESPONSE RECEIVED!! from blocking %s: %.3f\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_b);
                     return msg.data.response.result.result_function_b;
+                } else {
+                    printf("Linux: id=%-4d BAD!!!! RESPONSE RECEIVED for unexpected function %s\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag));
                 }
             } else if (msg.tag == MESSAGE_REQUEST) {
-                handle_request_linux(&msg, rcdev);
+                handle_request_linux(&msg, rcdev);  // Handle concurrent request
             } else if (msg.tag == MESSAGE_COMMAND) {
-                handle_command_linux(&msg);
+                handle_command_linux(&msg);  // Handle concurrent command
+            } else if (msg.tag == MESSAGE_RESPONSE) {
+                // printf("R5: Received unexpected response (request_id %lu)\n", msg.request_id);  // Comment out or make verbose-only
+                // Optional: Add a queue for pending responses if you want to match later, but for now, log quietly
+                printf("Linux: Note: Orphaned response id %u (from prior call)\n", msg.request_id);
             }
         }
         // usleep(5000);
     }
-    fprintf(stderr, "Linux: RESPONSE FAILURE!!, Timeout waiting for FUNCTION_B response\n");
+    fprintf(stdout, "Linux: id=%-4d RESPONSE FAILURE!!, Timeout waiting for %s response\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
     return -1.0f;
 }
 
 // Non-blocking command to R5 (e.g., trigger FUNCTION_A without return)
 static void send_command_a_nonblocking(rpmsg_char_dev_t *rcdev, int a, int b) {
+    uint32_t req_id = req_id_counter++;
     MESSAGE cmd = {0};
     cmd.tag = MESSAGE_COMMAND;
+    cmd.request_id = req_id;
     cmd.data.request.function_tag = FUNCTION_A;  // Reuse structure
     cmd.data.request.params.function_a.a = a;
     cmd.data.request.params.function_a.b = b;
 
     send_msg(rcdev->fd, &cmd, sizeof(MESSAGE));
-    printf("Linux: Sent non-blocking command for FUNCTION_A\n");
+    printf("Linux: id=%-4d Sent non-blocking command for %s\n", cmd.request_id, function_tag_to_string(cmd.data.request.function_tag));
 }
 
 // Main RPC loop
