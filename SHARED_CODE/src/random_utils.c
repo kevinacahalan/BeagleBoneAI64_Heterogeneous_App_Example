@@ -27,13 +27,8 @@ char *uint64ToDecimal(uint64_t v)
 #include <ti/osal/osal.h>
 #include <ai64/bbai64_clocks.h>
 
-// Waste a pseudo random amount of time between min and max ms
-void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
-    if (max_ms <= min_ms) {
-        Osal_delay(min_ms);
-        return;
-    }
-
+uint32_t get_random_u32()
+{
     // 1) Grab timer in µs, fold into 32 bits
     uint64_t t64 = get_gtc_as_microseconds();
     uint32_t x  = (uint32_t)(t64 ^ (t64 >> 32));
@@ -43,7 +38,19 @@ void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
     x ^= x >> 17;
     x ^= x << 5;
 
-    // 3) Scale into [0, span), then shift up to [min_ms, max_ms]
+    return x;
+}
+
+// Waste a pseudo random amount of time between min and max ms
+void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
+    if (max_ms <= min_ms) {
+        Osal_delay(min_ms);
+        return;
+    }
+    
+    uint32_t x  = get_random_u32();
+
+    // Scale into [0, span), then shift up to [min_ms, max_ms]
     uint32_t span  = max_ms - min_ms + 1;
     uint32_t offs  = x % span;
     Osal_delay(offs + min_ms);
@@ -55,6 +62,12 @@ void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
 #include <time.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+uint32_t get_random_u32()
+{
+    return (uint32_t)random();
+}
+
 void burn_time_pretending_to_do_stuff(uint32_t min_ms, uint32_t max_ms) {
     // 1) Sanity check
     if (max_ms <= min_ms) {
