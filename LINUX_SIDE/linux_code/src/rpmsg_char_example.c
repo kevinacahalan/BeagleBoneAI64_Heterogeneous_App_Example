@@ -20,6 +20,9 @@
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
 static uint32_t req_id_counter = 1;
+static inline uint32_t get_next_req_id(void) {
+    return req_id_counter++; // Linux increments positively
+}
 
 // Helpers for send/recv
 static int send_msg(int fd, void *msg, int len) {
@@ -96,7 +99,7 @@ static void handle_command_linux(MESSAGE *cmd_msg) {
 
 // Blocking call to R5 function A
 static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
-    uint32_t req_id = req_id_counter++;
+    uint32_t req_id = get_next_req_id();
 
     MESSAGE req = {0};
     req.tag = MESSAGE_REQUEST;
@@ -140,7 +143,7 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
 
 // Blocking call to R5 function B
 static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b, float c) {
-    uint32_t req_id = req_id_counter++;
+    uint32_t req_id = get_next_req_id();
 
     MESSAGE req = {0};
     req.tag = MESSAGE_REQUEST;
@@ -186,10 +189,10 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
 
 // Non-blocking command to R5 (e.g., trigger FUNCTION_A without return)
 static void send_command_a_nonblocking(rpmsg_char_dev_t *rcdev, int a, int b) {
-    uint32_t req_id = req_id_counter++;
+    uint32_t req_id = get_next_req_id();
     MESSAGE cmd = {0};
     cmd.tag = MESSAGE_COMMAND;
-    cmd.request_id = req_id;
+    cmd.request_id = req_id; // not needed for nonblocking
     cmd.data.request.function_tag = FUNCTION_A;  // Reuse structure
     cmd.data.request.params.function_a.a = a;
     cmd.data.request.params.function_a.b = b;

@@ -34,7 +34,10 @@ void do_other_random_things() {
 
 // MAKE SURE TO ADD YOUR FUNCTIONS TO request_tagged_union_t in SHARED_CODE/include/shared_rpmsg.h
 
-static uint32_t req_id_counter = 1;
+static uint32_t req_id_counter = -1;
+static inline uint32_t get_next_req_id(void) {
+    return req_id_counter--; // to reduce confusion with linux generated req_id_counter, the R5 ids decrement.
+}
 
 // Example R5 functions callable from Linux
 int function_a(int a, int b) {
@@ -105,7 +108,7 @@ void handle_command(MESSAGE *cmd_msg) {
 
 // Blocking call to Linux function X
 float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
-    uint32_t req_id = req_id_counter++;
+    uint32_t req_id = get_next_req_id();
 
     MESSAGE req = {0};
     req.tag = MESSAGE_REQUEST;
@@ -159,7 +162,9 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
 
 // Non-blocking command to Linux (e.g., trigger FUNCTION_X without return)
 int send_command_x_nonblocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
+    uint32_t req_id = get_next_req_id();
     MESSAGE cmd = {0};
+    cmd.request_id = req_id;
     cmd.tag = MESSAGE_COMMAND;
     cmd.data.request.function_tag = FUNCTION_X;
     cmd.data.request.params.function_x.param = param;
