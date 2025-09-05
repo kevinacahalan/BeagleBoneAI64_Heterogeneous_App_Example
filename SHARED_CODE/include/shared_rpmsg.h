@@ -92,4 +92,9 @@ typedef struct {
     } data;
 } MESSAGE;
 
+typedef struct {
+    int error;
+    void *rt;
+} REMOTE_RETURN;
+
 #endif // SHARED_RPMSG_H

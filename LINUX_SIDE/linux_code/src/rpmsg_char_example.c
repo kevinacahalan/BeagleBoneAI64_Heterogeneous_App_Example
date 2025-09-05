@@ -98,7 +98,7 @@ static void handle_command_linux(MESSAGE *cmd_msg) {
 }
 
 // Blocking call to R5 function A
-static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
+static REMOTE_RETURN call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b, float *rt_allocation) {
     uint32_t req_id = get_next_req_id();
 
     MESSAGE req = {0};
@@ -109,7 +109,7 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     req.data.request.params.function_a.b = b;
 
     if (send_msg(rcdev->fd, &req, sizeof(MESSAGE)) < 0) {
-        return -1;
+        return (REMOTE_RETURN){ .error = -1, .rt = NULL };
     }
     printf("Linux: id=%-4d Sent blocking call for %s\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
 
@@ -121,7 +121,8 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
                 if (msg.data.response.function_tag == FUNCTION_A) {
                     printf("Linux: id=%-4d RESPONSE RECEIVED!! from blocking %s: %d\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_a);
-                    return msg.data.response.result.result_function_a;
+                    *rt_allocation = msg.data.response.result.result_function_a;
+                    return (REMOTE_RETURN){ .error = 0, .rt = rt_allocation };
                 } else {
                     printf("Linux: id=%-4d BAD!!!! RESPONSE RECEIVED for unexpected function %s\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag));
                 }
@@ -138,11 +139,11 @@ static int call_function_a_blocking(rpmsg_char_dev_t *rcdev, int a, int b) {
         // usleep(5000);  //
     }
     fprintf(stdout, "Linux: id=%-4d RESPONSE FAILURE!!, Timeout waiting for %s response\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
-    return -1;
+    return (REMOTE_RETURN){ .error = -1, .rt = NULL };
 }
 
 // Blocking call to R5 function B
-static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b, float c) {
+static REMOTE_RETURN call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b, float c, float *rt_allocation) {
     uint32_t req_id = get_next_req_id();
 
     MESSAGE req = {0};
@@ -154,7 +155,7 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
     req.data.request.params.function_b.c = c;
 
     if (send_msg(rcdev->fd, &req, sizeof(MESSAGE)) < 0) {
-        return -1.0f;
+        return (REMOTE_RETURN){ .error = -1, .rt = NULL };
     }
     printf("Linux: id=%-4d Sent blocking call for %s\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
 
@@ -167,7 +168,8 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
                 if (msg.data.response.function_tag == FUNCTION_B) {
                     // printf("Linux: Got response for FUNCTION_B: %.3f\n", msg.data.response.result.result_function_b);
                     printf("Linux: id=%-4d RESPONSE RECEIVED!! from blocking %s: %.3f\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_b);
-                    return msg.data.response.result.result_function_b;
+                    *rt_allocation = msg.data.response.result.result_function_b;
+                    return (REMOTE_RETURN){ .error = 0, .rt = rt_allocation };
                 } else {
                     printf("Linux: id=%-4d BAD!!!! RESPONSE RECEIVED for unexpected function %s\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag));
                 }
@@ -184,11 +186,11 @@ static float call_function_b_blocking(rpmsg_char_dev_t *rcdev, float a, float b,
         // usleep(5000);
     }
     fprintf(stdout, "Linux: id=%-4d RESPONSE FAILURE!!, Timeout waiting for %s response\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
-    return -1.0f;
+    return (REMOTE_RETURN){ .error = -1, .rt = NULL };
 }
 
 // Non-blocking command to R5 (e.g., trigger FUNCTION_A without return)
-static void send_command_a_nonblocking(rpmsg_char_dev_t *rcdev, int a, int b) {
+static REMOTE_RETURN send_command_a_nonblocking(rpmsg_char_dev_t *rcdev, int a, int b) {
     uint32_t req_id = get_next_req_id();
     MESSAGE cmd = {0};
     cmd.tag = MESSAGE_COMMAND;
@@ -199,6 +201,7 @@ static void send_command_a_nonblocking(rpmsg_char_dev_t *rcdev, int a, int b) {
 
     send_msg(rcdev->fd, &cmd, sizeof(MESSAGE));
     printf("Linux: id=%-4d Sent non-blocking command for %s\n", cmd.request_id, function_tag_to_string(cmd.data.request.function_tag));
+    return (REMOTE_RETURN){ .error = 0, .rt = NULL };
 }
 
 // Main RPC loop
@@ -237,8 +240,9 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name, unsigned int local_endpt
         }
 
         // Example blocking calls
-        call_function_a_blocking(rcdev, 5, 3);
-        call_function_b_blocking(rcdev, 1.1f, 2.2f, 3.3f);
+        float rt_allocation = 0.0f;
+        call_function_a_blocking(rcdev, 5, 3, &rt_allocation);
+        call_function_b_blocking(rcdev, 1.1f, 2.2f, 3.3f, &rt_allocation);
 
         // Example non-blocking command
         send_command_a_nonblocking(rcdev, 10, 20);

@@ -107,7 +107,7 @@ void handle_command(MESSAGE *cmd_msg) {
 }
 
 // Blocking call to Linux function X
-float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
+REMOTE_RETURN call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param, float *rt_allocation) {
     uint32_t req_id = get_next_req_id();
 
     MESSAGE req = {0};
@@ -122,12 +122,13 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         printf("R5: Send failed (%ld); retrying once...\n", status);
         Osal_delay(500);
         status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &req, sizeof(MESSAGE));  // Simple retry
-        if (status != IPC_SOK) return -1.0f;
+        if (status != IPC_SOK) 
+            return (REMOTE_RETURN){ .error = -1, .rt = NULL };
     }
 
     if (status != IPC_SOK) {
         printf("R5: Send request failed (%ld)\n", status);
-        return -1.0f;
+        return (REMOTE_RETURN){ .error = -1, .rt = NULL };
     }
 
     uint64_t start = get_gtc_as_u64seconds();  // Use OSAL timer or similar
@@ -141,7 +142,9 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
             printf("R5: id=%-4ld Polled msg tag=%s, id=%lu during wait\n", msg.request_id, message_tag_to_string(msg.tag), msg.request_id);  // Debug
             if (msg.tag == MESSAGE_RESPONSE && msg.request_id == req_id) {
                 printf("R5: id=%-4ld RESPONSE RECEIVED!! from blocking %s: %.3f\n", msg.request_id, function_tag_to_string(msg.data.response.function_tag), msg.data.response.result.result_function_x);
-                return msg.data.response.result.result_function_x;
+                float tmp_float_rt = msg.data.response.result.result_function_x;
+                *rt_allocation = tmp_float_rt;
+                return (REMOTE_RETURN){ .error = 0, .rt = rt_allocation };
             } else if (msg.tag == MESSAGE_REQUEST) {
                 handle_request(&msg, handle, myEndPt, srcEndPt, srcProc);
             } else if (msg.tag == MESSAGE_COMMAND) {
@@ -157,11 +160,11 @@ float call_linux_function_x_blocking(RPMessage_Handle handle, uint32_t myEndPt, 
         Osal_delay(1);  // Tighter poll
     }
     printf("R5: id=%-4ld RESPONSE FAILURE!!, Timeout waiting for %s response\n", req.request_id, function_tag_to_string(req.data.request.function_tag));
-    return -1.0f;
+    return (REMOTE_RETURN){ .error = -1, .rt = NULL };;
 }
 
 // Non-blocking command to Linux (e.g., trigger FUNCTION_X without return)
-int send_command_x_nonblocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
+REMOTE_RETURN send_command_x_nonblocking(RPMessage_Handle handle, uint32_t myEndPt, uint32_t remoteEndPt, uint32_t remoteProcId, int param) {
     uint32_t req_id = get_next_req_id();
     MESSAGE cmd = {0};
     cmd.request_id = req_id;
@@ -175,11 +178,11 @@ int send_command_x_nonblocking(RPMessage_Handle handle, uint32_t myEndPt, uint32
         Osal_delay(500);
         status = RPMessage_send(handle, remoteProcId, remoteEndPt, myEndPt, &cmd, sizeof(MESSAGE));  // Simple retry
         if (status != IPC_SOK) 
-        return -1; // eh fixme
+            return (REMOTE_RETURN){ .error = -1, .rt = NULL };
     }
     
     printf("R5: id=%-4ld Sent non-blocking command for %s\n", cmd.request_id, function_tag_to_string(cmd.data.request.function_tag));
-    return 0; 
+    return (REMOTE_RETURN){ .error = 0, .rt = NULL };
 }
 
 // Process one incoming message (polling helper)
@@ -245,14 +248,30 @@ int32_t start_listing_to_linux(void) {
         process_one_message(handle, myEndPt, &remoteEndPt, &remoteProcId);
 
         // Example blocking call
-        call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 16);
-        call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 32);
+        float rt_allocation = 0.0f;
+        REMOTE_RETURN tmp = call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 16, &rt_allocation);
+        if (tmp.error != 0)
+            printf("R5: call_linux_function_x_blocking failed\n");
+        else
+            printf("R5: call_linux_function_x_blocking succeeded, rt=%.3f\n", *(float*)(tmp.rt));
+        
+
+        tmp = call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 32, &rt_allocation);
+        if (tmp.error != 0)
+            printf("R5: call_linux_function_x_blocking failed\n");
+        else
+            printf("R5: call_linux_function_x_blocking succeeded, rt=%.3f\n", *(float*)(tmp.rt));
 
         // Example non-blocking command
-        send_command_x_nonblocking(handle, myEndPt, remoteEndPt, remoteProcId, 32);
+        tmp = send_command_x_nonblocking(handle, myEndPt, remoteEndPt, remoteProcId, 32);
 
         burn_time_pretending_to_do_stuff(800, 1200);
-        call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 64);
+
+        tmp = call_linux_function_x_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 64, &rt_allocation);
+        if (tmp.error != 0)
+            printf("R5: call_linux_function_x_blocking failed\n");
+        else
+            printf("R5: call_linux_function_x_blocking succeeded, rt=%.3f\n", *(float*)(tmp.rt));
     }
     return 0;
 }
