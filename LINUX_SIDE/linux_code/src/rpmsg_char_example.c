@@ -227,6 +227,7 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name, unsigned int local_endpt
 
     // Main loop: Poll for messages, make example calls
     while (1) {
+        printf("Linux: AT ROOT!\n");
         MESSAGE msg;
         int len = 0;
         if (recv_msg(rcdev->fd, &msg, sizeof(MESSAGE), &len) == 0 && len == sizeof(MESSAGE)) {
@@ -242,8 +243,17 @@ static int rpmsg_char_rpc(int rproc_id, char *dev_name, unsigned int local_endpt
         // Example blocking calls
         float rt_allocation = 0.0f;
         call_function_a_blocking(rcdev, 5, 3, &rt_allocation);
+        burn_time_pretending_to_do_stuff(5, 200);
+        if (get_random_u32() % 5 == 0)
+            continue;  // Skip some commands
         call_function_b_blocking(rcdev, 1.1f, 2.2f, 3.3f, &rt_allocation);
-
+        burn_time_pretending_to_do_stuff(5, 200);
+        if (get_random_u32() % 5 == 0)
+            continue;  // Skip some commands
+        call_function_b_blocking(rcdev, 1.1f, 2.2f, 3.3f, &rt_allocation);
+        burn_time_pretending_to_do_stuff(5, 200);
+        if (get_random_u32() % 5 == 0)
+            continue;  // Skip some commands
         // Example non-blocking command
         send_command_a_nonblocking(rcdev, 10, 20);
 

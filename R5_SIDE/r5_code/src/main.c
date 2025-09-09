@@ -302,6 +302,7 @@ int32_t start_listing_to_linux(void) {
 
     // Main loop: Poll for messages, make example calls
     while (1) {
+        printf("R5: AT ROOT!\n");
         process_one_message(handle, myEndPt, &remoteEndPt, &remoteProcId);
 
         // Example blocking call
@@ -312,12 +313,20 @@ int32_t start_listing_to_linux(void) {
         else
             printf("R5: call_linux_function_x_blocking succeeded, rt=%.3f\n", *(float*)(tmp.rt));
         
+        burn_time_pretending_to_do_stuff(5, 200);
+        if (get_random_u32() % 5 == 0)
+            continue;  // Skip some commands
 
         tmp = call_linux_function_y_blocking(handle, myEndPt, remoteEndPt, remoteProcId, 32, &rt_allocation);
         if (tmp.error != 0)
             printf("R5: call_linux_function_y_blocking failed\n");
         else
             printf("R5: call_linux_function_y_blocking succeeded, rt=%3d\n", *(int*)(tmp.rt));
+
+        burn_time_pretending_to_do_stuff(5, 200);
+        if (get_random_u32() % 5 == 0)
+            continue;  // Skip some commands
+        
 
         // Example non-blocking command
         tmp = send_command_x_nonblocking(handle, myEndPt, remoteEndPt, remoteProcId, 32);
