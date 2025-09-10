@@ -107,8 +107,8 @@ make CROSSCOMPILE=true # default is to not cross compile
 #### To build and copy to board:
 `[SCRIPT_DIR]/compile_and_push.sh --ip [BEAGLE_IP]`
 
-#### To run
-`sudo [SCRIPT_DIR]/debug_run.sh`
+#### To run:
+`sudo [SCRIPT_DIR]/debug_run.sh` (RUN FROM BOARD, NOT YOUR DEV MACHINE!)
 
 ### Device tree info
 - Copy the overlays from our `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board.
