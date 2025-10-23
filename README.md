@@ -150,7 +150,7 @@ https://drive.google.com/file/d/15NLaUeMBy-iT8s6rFrP4Esf0Qh57T4xu/view?pli=1
 
 From the spreadsheet we see that pad AC22 is the first pad on BB header pin P9_22. AC22 is thus known as P9_22a. The alternative
 pad, U29, is known as P9_22b. From Looking at the TDA4VM datasheet, we see that AC22(aka P9_22a) has the address 0x00011C09C. For 
-the J721E_IOPAD() pin-mux macro, we need the bottom 24bits of the address, so 0x09c, or 0x9c. 
+the J721E_IOPAD() pin-mux macro, we need the bottom 12bits of the address, so 0x09c, or 0x9c. 
 
 To mux AC22(aka P9_22a) to be SPI6_CLK, as figured out from the spreadsheet, we need to set AC22 to mux-mode 4. And since
 a SPI clock is an output signal, the pin should be put set to PIN_OUTPUT mode.
