@@ -102,7 +102,9 @@ make CROSSCOMPILE=true # default is to not cross compile
 ```
 
 #### To build everything at once:
-`[SCRIPT_DIR]/build_script.sh --beaglebone`
+- `[SCRIPT_DIR]/build_script.sh --beaglebone`
+
+- Or with docker `[SCRIPT_DIR]/docker_cross_build.sh --both`
 
 #### To build and copy to board:
 `[SCRIPT_DIR]/compile_and_push.sh --ip [BEAGLE_IP]`

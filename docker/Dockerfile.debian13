@@ -1,0 +1,29 @@
+FROM debian:13
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN dpkg --add-architecture arm64 \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash \
+        build-essential \
+        make \
+        git \
+        ca-certificates \
+        pkg-config \
+        file \
+        python3 \
+        gcc-aarch64-linux-gnu \
+        g++-aarch64-linux-gnu \
+        gcc-arm-none-eabi \
+        binutils-arm-none-eabi \
+        libnewlib-arm-none-eabi \
+        libc6-dev:arm64 \
+        libgpiod-dev:arm64 \
+        libtinfo6 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /home/builder
+WORKDIR /workspace
+
+CMD ["/bin/bash"]
