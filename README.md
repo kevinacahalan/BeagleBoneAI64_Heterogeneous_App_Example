@@ -322,8 +322,8 @@ video https://www.youtube.com/watch?v=n3u3QgnAvV8.
 
 - **[K3 OCD Guide](https://nmenon.github.io/k3ocd/)**: A guide on using OpenOCD for debugging on the BeagleBone AI-64.
 - **[Debugging Options Forum Thread](https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5)**: A discussion on various debugging options available for the BeagleBone AI-64.
-- **[YouTube Debugging Tutorial](https://www.youtube.com/watch?v=n3u3QgnAvV8)**: A video tutorial covering debugging techniques.
-- **[OpenOCD Config Issue](https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31)**: Issue tracker for OpenOCD configuration specific to the BeagleBone AI-64.
+- **[Debugging Tutorial](https://www.youtube.com/watch?v=n3u3QgnAvV8)**: A video tutorial covering debugging techniques.
+- **[OpenOCD Debug Setup](https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31)**: OpenOCD and debug hardware configuration.
 
 #### Work by others:
 - This guy is doing PRU and DSP stuff
