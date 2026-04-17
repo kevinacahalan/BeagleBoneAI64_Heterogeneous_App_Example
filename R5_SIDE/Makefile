@@ -114,7 +114,17 @@ CORE ?= r5f0_0
 CFGENERAL = -fpic -ffreestanding -ffunction-sections -fdata-sections -fno-exceptions -mcpu=cortex-r5 -marm -mfloat-abi=hard -ggdb -u _printf_float -u _printf_int64 -u _printf_uint64
 WARNINGS = -W -Wall -Wshadow -fno-common
 STANDARD =
-CFLAGS := -g3 -Og $(WARNINGS) $(CFGENERAL) $(DEFINES) $(INCLUDES)
+
+# Build mode: debug or release
+BUILD_MODE ?= debug
+
+ifeq ($(BUILD_MODE), release)
+	CFLAGS := -g -O3 $(WARNINGS) $(CFGENERAL) $(DEFINES) $(INCLUDES) -DNDEBUG
+else ifeq ($(BUILD_MODE), debug)
+	CFLAGS := -g3 -Og $(WARNINGS) $(CFGENERAL) $(DEFINES) $(INCLUDES)
+else
+$(error Unknown BUILD_MODE, set BUILD_MODE=[debug, release])
+endif
 
 .PHONY: clean all help
 
@@ -134,10 +144,17 @@ help:
 	@echo "clean          : Cleans"
 	@echo "help           : Prints help message"
 	@echo ""
-	@echo ""
 	@echo "Optional make variables:"
 	@echo "------------------------"
-	@echo "[there are no options currently]"
+	@echo "BUILD_MODE=[debug, release]"
+	@echo "    Default: debug"
+	@echo "    debug: -g3 -Og (optimized for debugging)"
+	@echo "    release: -O3 -DNDEBUG (optimized for performance)"
+	@echo ""
+	@echo "Examples:"
+	@echo "---------"
+	@echo "make                        # Debug build"
+	@echo "make BUILD_MODE=release     # Release build"
 
 
 clean:

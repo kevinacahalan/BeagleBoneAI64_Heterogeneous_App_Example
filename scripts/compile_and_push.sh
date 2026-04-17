@@ -10,7 +10,7 @@ fi
 
 SCRIPT_DIR=$(dirname "$0")
 
-BUILD_SCRIPT="$SCRIPT_DIR/build_script.sh --beaglebone"
+BUILD_SCRIPT="$SCRIPT_DIR/build_script.sh --both"
 RSYNC_SOURCE_DIR="$SCRIPT_DIR/../"
 RSYNC_DEST_DIR="~/BeagleBoneAI64_Heterogeneous_App_Example/"
 BEAGLEBONE_IP=""  # No default IP address

@@ -102,7 +102,7 @@ print_info "Using kernel 6 workflow"
 
 if [ "$COMPILE" = true ]; then
     print_info "Building BeagleBone outputs before launch"
-    sudo -u "$ORIGINAL_USER" bash "$SCRIPT_DIR/build_script.sh" --beaglebone
+    sudo -u "$ORIGINAL_USER" bash "$SCRIPT_DIR/build_script.sh" --both
 fi
 
 validate_artifacts || exit 1

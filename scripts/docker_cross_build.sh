@@ -7,29 +7,41 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 IMAGE_NAME="localhost/debian13-bbai64-build:latest"
 DOCKERFILE_PATH="${REPO_ROOT}/docker/Dockerfile.debian13"
 TARGET="both"
+BUILD_MODE="debug"
 TI_SDK_DIR="${HOME}/ti"
 SKIP_IMAGE_BUILD="false"
 CONTAINER_ENGINE=""
 MOUNT_SUFFIX=""
 USER_FLAGS=()
+CLEAN_ONLY="false"
 
 print_help() {
     cat <<'EOF'
 Usage: ./scripts/docker_cross_build.sh [options]
 
 Options:
-  --linux                Build only LINUX_SIDE for BeagleBone (aarch64).
-  --r5                   Build only R5_SIDE firmware.
-  --both                 Build both targets (default).
-  --ti-sdk-dir <path>    Host path containing TI SDK folder(s). Default: $HOME/ti
+    --linux                Build only the Linux side for BeagleBone (aarch64).
+    --r5                   Build only the R5 firmware.
+    --both                 Build both targets (default).
+    --debug                Debug build for Linux outputs (default).
+    --release              Release build for Linux outputs.
+    --clean                Clean Linux and R5 build artifacts inside the container and exit.
+    --ti-sdk-dir <path>    Host path containing TI SDK folder(s). Default: $HOME/ti
     --image <name:tag>     Docker image name. Default: localhost/debian13-bbai64-build:latest
-  --skip-image-build     Reuse existing image and skip docker build.
-  -h, --help             Show this help.
+    --skip-image-build     Reuse existing image and skip docker build.
+    -h, --help             Show this help.
+
+Notes:
+    - BUILD_MODE affects compiler flags for both Linux and R5 sources.
+    - Debug means -Og -g3 for Linux and -g3 -Og for R5.
+    - Release means -O3 -DNDEBUG for both Linux and R5 sources.
+    - TI PDK library selection for R5 is unchanged by BUILD_MODE.
 
 Examples:
-  ./scripts/docker_cross_build.sh --both
-  ./scripts/docker_cross_build.sh --linux
-  ./scripts/docker_cross_build.sh --r5 --ti-sdk-dir "$HOME/ti"
+        ./scripts/docker_cross_build.sh --both
+    ./scripts/docker_cross_build.sh --linux --release
+    ./scripts/docker_cross_build.sh --r5 --ti-sdk-dir "$HOME/ti"
+    ./scripts/docker_cross_build.sh --clean
 EOF
 }
 
@@ -45,6 +57,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --both)
             TARGET="both"
+            shift
+            ;;
+        --debug)
+            BUILD_MODE="debug"
+            shift
+            ;;
+        --release)
+            BUILD_MODE="release"
+            shift
+            ;;
+        --clean)
+            CLEAN_ONLY="true"
             shift
             ;;
         --ti-sdk-dir)
@@ -79,6 +103,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ "${BUILD_MODE}" != "debug" && "${BUILD_MODE}" != "release" ]]; then
+    echo "Error: BUILD_MODE must be debug or release"
+    exit 1
+fi
+
 if command -v docker >/dev/null 2>&1; then
     CONTAINER_ENGINE="docker"
     USER_FLAGS=("-u" "$(id -u):$(id -g)")
@@ -106,12 +135,26 @@ fi
 
 CONTAINER_CMD=""
 
-if [[ "${TARGET}" == "linux" || "${TARGET}" == "both" ]]; then
-    CONTAINER_CMD+="make -C /workspace/LINUX_SIDE clean && "
-    CONTAINER_CMD+="make -C /workspace/LINUX_SIDE CROSS_COMPILE=true"
+if [[ "${CLEAN_ONLY}" == "true" ]]; then
+    case "${TARGET}" in
+        linux)
+            CONTAINER_CMD="make -C /workspace/LINUX_SIDE clean"
+            ;;
+        r5)
+            CONTAINER_CMD="make -C /workspace/R5_SIDE clean"
+            ;;
+        both)
+            CONTAINER_CMD="make -C /workspace/LINUX_SIDE clean && make -C /workspace/R5_SIDE clean"
+            ;;
+    esac
 fi
 
-if [[ "${TARGET}" == "r5" || "${TARGET}" == "both" ]]; then
+if [[ "${CLEAN_ONLY}" != "true" && ( "${TARGET}" == "linux" || "${TARGET}" == "both" ) ]]; then
+    CONTAINER_CMD+="make -C /workspace/LINUX_SIDE clean && "
+    CONTAINER_CMD+="make -C /workspace/LINUX_SIDE CROSS_COMPILE=true BUILD_MODE=${BUILD_MODE}"
+fi
+
+if [[ "${CLEAN_ONLY}" != "true" && ( "${TARGET}" == "r5" || "${TARGET}" == "both" ) ]]; then
     if [[ ! -d "${TI_SDK_DIR}" ]]; then
         echo "Error: TI SDK directory not found: ${TI_SDK_DIR}"
         echo "Pass a valid path with --ti-sdk-dir <path>."
@@ -123,7 +166,7 @@ if [[ "${TARGET}" == "r5" || "${TARGET}" == "both" ]]; then
     fi
 
     CONTAINER_CMD+="make -C /workspace/R5_SIDE clean && "
-    CONTAINER_CMD+="make -C /workspace/R5_SIDE"
+    CONTAINER_CMD+="make -C /workspace/R5_SIDE BUILD_MODE=${BUILD_MODE}"
 fi
 
 if [[ -z "${CONTAINER_CMD}" ]]; then
@@ -131,7 +174,12 @@ if [[ -z "${CONTAINER_CMD}" ]]; then
     exit 1
 fi
 
-echo "Running ${TARGET} build in container..."
+if [[ "${CLEAN_ONLY}" == "true" ]]; then
+    echo "Cleaning ${TARGET} build artifacts in container..."
+else
+    echo "Running ${TARGET} build in container..."
+    echo "BUILD_MODE=${BUILD_MODE}"
+fi
 "${CONTAINER_ENGINE}" run --rm -t \
     "${USER_FLAGS[@]}" \
     -e HOME=/home/builder \

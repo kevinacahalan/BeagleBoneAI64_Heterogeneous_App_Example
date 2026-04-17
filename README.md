@@ -85,12 +85,13 @@ Make sure to use **Debian12** for building. It will make your life easier. On wi
     These ".a" files have an unusual extension, ".aer5f".
 
 
-#### To build R5 code:
+#### To build R5 side code:
 - Build TI sdk and place it at correct location as directed above.
 - install `gcc-arm-none-eabi`
 - Run `make` from folder with R5 makefile
+- Run `make BUILD_MODE=release` for a release-flavored R5 build
 
-#### To build Linux code:
+#### To build Linux side code:
 ```bash
 sudo apt-get update
 sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
@@ -98,13 +99,39 @@ sudo dpkg --add-architecture arm64
 sudo apt-get update
 sudo apt-get install -y libgpiod-dev:arm64
 
-make CROSSCOMPILE=true # default is to not cross compile
+cd LINUX_SIDE
+make CROSS_COMPILE=true
+make CROSS_COMPILE=true BUILD_MODE=release
 ```
 
-#### To build everything at once:
-- `[SCRIPT_DIR]/build_script.sh --beaglebone`
+`BUILD_MODE` affects compiler flags for both Linux and R5 sources:
+- `debug` is the default and uses `-Og -g3` for Linux and `-g3 -Og` for R5
+- `release` uses `-O3 -DNDEBUG` for both Linux and R5 source builds
 
-- Or with docker `[SCRIPT_DIR]/docker_cross_build.sh --both`
+For R5, `BUILD_MODE` only changes how your project sources are compiled. It does not currently switch the TI PDK library paths between debug and release variants.
+
+There is no supported x86 local-run build for this example app. The Linux build target is the BeagleBone `aarch64` binary.
+
+#### To build everything at once:
+Host build script:
+- `[SCRIPT_DIR]/build_script.sh --both`
+
+- Other supported host build targets:
+- `[SCRIPT_DIR]/build_script.sh --linux`
+- `[SCRIPT_DIR]/build_script.sh --r5`
+- `[SCRIPT_DIR]/build_script.sh --both --release`
+- `[SCRIPT_DIR]/build_script.sh --clean`
+
+Docker build script:
+- `[SCRIPT_DIR]/docker_cross_build.sh --both`
+
+- Other supported Docker build targets:
+- `[SCRIPT_DIR]/docker_cross_build.sh --linux`
+- `[SCRIPT_DIR]/docker_cross_build.sh --r5`
+- `[SCRIPT_DIR]/docker_cross_build.sh --both --release`
+- `[SCRIPT_DIR]/docker_cross_build.sh --clean`
+
+The normal build script and `docker_cross_build.sh` now use the same target-selection arguments and the same `--debug` / `--release` meanings.
 
 #### To build and copy to board:
 `[SCRIPT_DIR]/compile_and_push.sh --ip [BEAGLE_IP]`

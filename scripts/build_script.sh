@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 BUILD_MODE="debug"
-TARGET=""
+TARGET="both"
 CLEAN_ONLY=false
 
 print_header() {
@@ -45,10 +45,10 @@ Example build script
 Usage:
     ./build_script.sh [TARGET] [OPTIONS]
 
-Targets (one required unless --clean is used):
-    --local          Build the Linux example for the current machine
-    --beaglebone     Cross-compile Linux and build the R5 firmware
-    --both           Build both local Linux and BeagleBone outputs
+Targets:
+    --linux          Build only the Linux side for the BeagleBone target
+    --r5             Build only the R5 firmware
+    --both           Build both targets (default)
 
 Options:
     --debug          Debug build for Linux outputs (default)
@@ -57,13 +57,16 @@ Options:
     --help           Show this help text
 
 Notes:
-    - Linux BUILD_MODE affects the LINUX_SIDE Makefile.
-    - The R5 Makefile does not currently distinguish debug vs release builds.
+    - BUILD_MODE affects compiler flags for both Linux and R5 sources.
+    - Debug means -Og -g3 for Linux and -g3 -Og for R5.
+    - Release means -O3 -DNDEBUG for both Linux and R5 sources.
+    - TI PDK library selection for R5 is unchanged by BUILD_MODE.
 
 Examples:
-    ./build_script.sh --local
-    ./build_script.sh --beaglebone --release
     ./build_script.sh --both
+    ./build_script.sh --linux --release
+    ./build_script.sh --r5
+    ./build_script.sh --both --release
     ./build_script.sh --clean
 EOF
 }
@@ -84,19 +87,19 @@ check_dependencies() {
         missing=1
     fi
 
-    if [ "$TARGET" = "local" ] || [ "$TARGET" = "both" ]; then
-        if ! command -v gcc >/dev/null 2>&1; then
+    if [ "$TARGET" = "linux" ] || [ "$TARGET" = "both" ]; then
+        if [ "$(uname -m)" = "x86_64" ]; then
+            if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+                print_error "aarch64-linux-gnu-gcc is not installed"
+                missing=1
+            fi
+        elif ! command -v gcc >/dev/null 2>&1; then
             print_error "gcc is not installed"
             missing=1
         fi
     fi
 
-    if [ "$TARGET" = "beaglebone" ] || [ "$TARGET" = "both" ]; then
-        if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
-            print_error "aarch64-linux-gnu-gcc is not installed"
-            missing=1
-        fi
-
+    if [ "$TARGET" = "r5" ] || [ "$TARGET" = "both" ]; then
         if ! command -v arm-none-eabi-gcc >/dev/null 2>&1; then
             print_error "arm-none-eabi-gcc is not installed"
             missing=1
@@ -113,19 +116,23 @@ clean_all() {
     print_success "Clean completed"
 }
 
-build_local() {
-    print_header "Building Linux example for local machine"
+build_linux() {
+    local make_args=(BUILD_MODE="$BUILD_MODE")
+
+    if [ "$(uname -m)" = "x86_64" ]; then
+        make_args+=(CROSS_COMPILE=true)
+    fi
+
+    print_header "Building Linux side for BeagleBone target"
     print_info "BUILD_MODE=$BUILD_MODE"
-    make -C "$PROJECT_ROOT/LINUX_SIDE" BUILD_MODE="$BUILD_MODE"
-    print_success "Built $PROJECT_ROOT/build/linux/LINUX_SIDE_x86_64"
+    make -C "$PROJECT_ROOT/LINUX_SIDE" "${make_args[@]}"
+    print_success "Built $PROJECT_ROOT/build/linux/LINUX_SIDE_aarch64"
 }
 
-build_beaglebone() {
-    print_header "Building BeagleBone Linux and R5 outputs"
-    print_info "Linux BUILD_MODE=$BUILD_MODE"
-    make -C "$PROJECT_ROOT/LINUX_SIDE" CROSS_COMPILE=true BUILD_MODE="$BUILD_MODE"
-    make -C "$PROJECT_ROOT/R5_SIDE"
-    print_success "Built $PROJECT_ROOT/build/linux/LINUX_SIDE_aarch64"
+build_r5() {
+    print_header "Building R5 firmware"
+    print_info "BUILD_MODE=$BUILD_MODE"
+    make -C "$PROJECT_ROOT/R5_SIDE" BUILD_MODE="$BUILD_MODE"
     print_success "Built $PROJECT_ROOT/build/R5_0/r5f_r5f0_0.elf"
 }
 
@@ -139,12 +146,12 @@ while [[ "$#" -gt 0 ]]; do
             BUILD_MODE="release"
             shift
             ;;
-        --local)
-            TARGET="local"
+        --linux)
+            TARGET="linux"
             shift
             ;;
-        --beaglebone)
-            TARGET="beaglebone"
+        --r5)
+            TARGET="r5"
             shift
             ;;
         --both)
@@ -174,25 +181,20 @@ if [ "$CLEAN_ONLY" = true ]; then
     exit 0
 fi
 
-if [ -z "$TARGET" ]; then
-    print_help
-    exit 1
-fi
-
 if ! check_dependencies; then
     exit 1
 fi
 
 case "$TARGET" in
-    local)
-        build_local
+    linux)
+        build_linux
         ;;
-    beaglebone)
-        build_beaglebone
+    r5)
+        build_r5
         ;;
     both)
-        build_local
-        build_beaglebone
+        build_linux
+        build_r5
         ;;
 esac
 
