@@ -71,3 +71,7 @@ LINUX_SIDE/build/LINUX_SIDE_aarch64
 
 *.xer5f
 LINUX_SIDE/build
+
+# Local-only tooling files
+.github/copilot-instructions.md
+scripts/__pycache__/
