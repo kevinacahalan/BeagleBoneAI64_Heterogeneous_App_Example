@@ -22,6 +22,9 @@ static const char* message_tag_names[] = {
     "MESSAGE_PING"
 };
 static inline const char* message_tag_to_string(MESSAGE_TAG tag) {
+    if ((unsigned int)tag >= (sizeof(message_tag_names) / sizeof(message_tag_names[0]))) {
+        return "MESSAGE_INVALID";
+    }
     return message_tag_names[tag];
 }
 
@@ -45,6 +48,9 @@ static const char* function_tag_names[] = {
     "FUNCTION_Y"
 };
 static inline const char* function_tag_to_string(FUNCTION_TAG tag) {
+    if ((unsigned int)tag >= (sizeof(function_tag_names) / sizeof(function_tag_names[0]))) {
+        return "FUNCTION_INVALID";
+    }
     return function_tag_names[tag];
 }
 

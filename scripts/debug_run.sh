@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ORIGINAL_USER="${SUDO_USER:-$USER}"
 COMPILE=false
 SESSION_NAME="LINUX_AND_R5"
+STANDALONE_LINUX_SESSION_NAME="EXAMPLE_LINUX"
 LINUX_BINARY="$SCRIPT_DIR/../build/linux/LINUX_SIDE_aarch64"
 R5_BINARY="$SCRIPT_DIR/../build/R5_0/r5f_r5f0_0.elf"
 
@@ -29,6 +30,16 @@ Options:
     --compile      Build the BeagleBone outputs before launching tmux
     --help         Show this help text
 EOF
+}
+
+ensure_standalone_linux_session_not_running() {
+    if tmux has-session -t "$STANDALONE_LINUX_SESSION_NAME" 2>/dev/null; then
+        print_error "tmux session $STANDALONE_LINUX_SESSION_NAME is already running"
+        print_error "Stop the standalone Linux debug session before starting $SESSION_NAME"
+        return 1
+    fi
+
+    return 0
 }
 
 validate_device_model() {
@@ -97,6 +108,7 @@ done
 
 validate_device_model || exit 1
 validate_requirements || exit 1
+ensure_standalone_linux_session_not_running || exit 1
 
 print_info "Using kernel 6 workflow"
 

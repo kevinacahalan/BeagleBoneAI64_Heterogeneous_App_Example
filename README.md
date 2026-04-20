@@ -17,7 +17,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **MPU and Cache Configuration**: TI AM64 sdk code...
 - **Exception and Interrupt Handling**: TI J721e SDK/PDK exception/interrupt handlers.
 - **PWM Signal Generation**: Flashing LED on pin P9_25.
-- **Rpmsg**: Basic Linux-R5 core communication (under development and a mess rn).
+- **Rpmsg**: Basic Linux-R5 core communication with RPMSG, cross core function calling.
 - **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
 - **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
 - **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
