@@ -11,55 +11,9 @@
 
 #include <io_test_functions/gpio_tests.h>
 
-
-#include <ti/csl/csl_gpio.h>
-#include <ti/csl/csl_gpioAux.h>
-#include <ti/csl/cslr_gpio.h>
-
-
-#include <ti/csl/arch/r5/interrupt.h>  // for Intc_* APIs
-// ... other headers ...
-
-// #define GPIO0_BASE_ADDR   (/* base address of GPIO0 on J721E, from soc header */)
-// #define PIN_NUMBER        (80U)   // We're focusing on gpio0_80
-#define INTR_NUM          (257)
-
-static void myGpioISR(void *arg);
-
-
-// I have not gotten this stuff to work yet. I have been spending too much time.
 void gpioIntrTestInit(void)
 {
-    // 1. Set the direction as input
-    GPIOSetDirMode_v0(GPIO_PIN_BASE_ADDR(P8_03), GPIO_PIN_NUM(P8_03), GPIO_DIRECTION_INPUT);
-
-    // 2. Configure the interrupt trigger. For example, rising-edge:
-    GPIOSetIntrType_v0(GPIO_PIN_BASE_ADDR(P8_03), GPIO_PIN_NUM(P8_03), GPIO_INTR_MASK_RISE_EDGE);
-
-    // 3. Enable the interrupt in GPIO (bank-level interrupt, plus edge detection).
-    GPIOIntrEnable_v0(GPIO_PIN_BASE_ADDR(P8_03), GPIO_PIN_NUM(P8_03), GPIO_INTR_MASK_RISE_EDGE);
-
-    // 4. At the interrupt controller (VIM) level, register our ISR.
-    Intc_IntRegister(INTR_NUM, myGpioISR, NULL);
-
-    // 5. Enable the interrupt at the VIM.
-    Intc_IntEnable(INTR_NUM);
-
-    // 6. Globally enable CPU interrupts (IRQ/FIQ) if not already done.
-    Intc_SystemEnable();
-
-    // Now, whenever the GPIO0_20 (P8_03) sees a rising edge, it should call myGpioISR().
-}
-
-static void myGpioISR(void *arg)
-{
-    (void)arg;
-    // 1. Clear the interrupt status in GPIO
-    GPIOIntrClear_v0(GPIO_PIN_BASE_ADDR(P8_03), GPIO_PIN_NUM(P8_03));
-
-    // 2. Do something: toggle an LED, log a message, etc.
-    //    For example:
-    printf("GPIO0_80 triggered a rising edge interrupt!\n");
+    /* Disabled: main GPIO interrupt ownership/debugging was abandoned. */
 }
 
 
