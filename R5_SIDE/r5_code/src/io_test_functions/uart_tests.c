@@ -5,36 +5,42 @@
 #include <stdlib.h>
 #include <ti/csl/csl_uart.h>
 #include <ti/csl/soc.h>
+#include <ai64/bbai64_clocks.h>
 
-// #define UART_BASE_ADDR CSL_UART2_BASE
+#include <io_test_functions/uart_tests.h>
 
+#define UART_MODULE_CLOCK_HZ 48000000U
+#define UART_TEST_BAUD_RATE  19200U
+#define UART_TEST_DATA_BITS  8U
+#define UART_TEST_STOP_BITS  1U
+#define UART_TEST_PARITY     0U
+#define UART_RX_TIMEOUT_US   500000U
 
-void UARTInit(uint32_t baseAddr, uint32_t moduleClk, uint32_t baudRate,
-              uint32_t dataBits, uint32_t stopBits, uint32_t parity) {
+static uint32_t UARTSelectOperatingMode(uint32_t baudRate)
+{
+    if (baudRate >= 921600U) {
+        return UART13x_OPER_MODE;
+    }
+
+    return UART16x_OPER_MODE;
+}
+
+static void UARTInit(uint32_t baseAddr, uint32_t moduleClk, uint32_t baudRate,
+                     uint32_t dataBits, uint32_t stopBits, uint32_t parity)
+{
     uint32_t divisorValue;
     uint32_t wLenStbFlag = 0;
     uint32_t parityFlag = 0;
+    const uint32_t operatingMode = UARTSelectOperatingMode(baudRate);
 
-    // Reset UART module
     UARTModuleReset(baseAddr);
 
-    // Select UART16x operating mode
-    UARTOperatingModeSelect(baseAddr, UART16x_OPER_MODE);
-
-    // Compute divisor value for desired baud rate
-    divisorValue = UARTDivisorValCompute(moduleClk, baudRate, UART16x_OPER_MODE, 0);
-
-    // Enable access to Divisor Latches
+    UARTOperatingModeSelect(baseAddr, operatingMode);
+    divisorValue = UARTDivisorValCompute(moduleClk, baudRate, operatingMode, 0);
     UARTDivisorLatchEnable(baseAddr);
-
-    // Write divisor value
     UARTDivisorLatchWrite(baseAddr, divisorValue);
-
-    // Disable access to Divisor Latches
     UARTDivisorLatchDisable(baseAddr);
 
-    // Configure Line Characteristics
-    // Set word length
     switch (dataBits) {
         case 5:
             wLenStbFlag = UART_FRAME_WORD_LENGTH_5;
@@ -51,14 +57,12 @@ void UARTInit(uint32_t baseAddr, uint32_t moduleClk, uint32_t baudRate,
             break;
     }
 
-    // Set number of stop bits
     if (stopBits == 2) {
         wLenStbFlag |= UART_FRAME_NUM_STB_1_5_2;
     } else {
         wLenStbFlag |= UART_FRAME_NUM_STB_1;
     }
 
-    // Set parity
     switch (parity) {
         case 0:
             parityFlag = UART_PARITY_NONE;
@@ -74,63 +78,94 @@ void UARTInit(uint32_t baseAddr, uint32_t moduleClk, uint32_t baudRate,
             break;
     }
 
-    // Apply line characteristics settings
     UARTLineCharacConfig(baseAddr, wLenStbFlag, parityFlag);
 
-    // Configure FIFO settings
-    uint32_t fifoConfig = UART_FIFO_CONFIG(
-        UART_TRIG_LVL_GRANULARITY_1,  // txGra
-        UART_TRIG_LVL_GRANULARITY_1,  // rxGra
-        1,                            // txTrig
-        1,                            // rxTrig
-        1,                            // txClr
-        1,                            // rxClr
-        UART_DMA_EN_PATH_SCR,         // dmaEnPath
-        UART_DMA_MODE_0_ENABLE        // dmaMode
+    const uint32_t fifoConfig = UART_FIFO_CONFIG(
+        UART_TRIG_LVL_GRANULARITY_1,
+        UART_TRIG_LVL_GRANULARITY_1,
+        0,
+        0,
+        0,
+        0,
+        UART_DMA_EN_PATH_SCR,
+        UART_DMA_MODE_0_ENABLE
     );
 
     UARTFIFOConfig(baseAddr, fifoConfig);
-
-    // Re-enable UART in UART16x mode
-    UARTOperatingModeSelect(baseAddr, UART16x_OPER_MODE);
+    UARTOperatingModeSelect(baseAddr, operatingMode);
 }
 
-void UARTSend(uint32_t baseAddr, const uint8_t *data, uint32_t length) {
+static void UARTSend(uint32_t baseAddr, const uint8_t *data, uint32_t length)
+{
     for (uint32_t i = 0; i < length; i++) {
-        // Wait until space is available in the FIFO
         while (!UARTSpaceAvail(baseAddr));
         UARTCharPut(baseAddr, data[i]);
     }
 }
 
-uint32_t UARTReceive(uint32_t baseAddr, uint8_t *buffer, uint32_t length) {
-    uint32_t count = 0;
-    while (count < length) {
-        // Wait until data is available
-        while (!UARTCharsAvail(baseAddr));
-        buffer[count++] = UARTCharGet(baseAddr);
+static void UARTDrainRx(uint32_t baseAddr)
+{
+    while (UARTCharsAvail(baseAddr)) {
+        (void)UARTCharGet(baseAddr);
     }
+}
+
+static uint32_t UARTReceiveWithTimeout(uint32_t baseAddr, uint8_t *buffer,
+                                       uint32_t length, uint64_t timeoutUs)
+{
+    uint32_t count = 0;
+    const uint64_t deadlineTicks = get_current_ticks() + dmicroseconds_to_ticks(timeoutUs);
+
+    while ((count < length) && (get_current_ticks() < deadlineTicks)) {
+        if (!UARTCharsAvail(baseAddr)) {
+            continue;
+        }
+
+        buffer[count++] = (uint8_t)UARTCharGet(baseAddr);
+    }
+
     return count;
 }
 
-void test_uart(uint32_t baseAddr) {
-    uint8_t txBuffer[] = "Hello UART!\n";
-    uint8_t rxBuffer[100];
-    uint32_t baudRate = 19200;
-    uint32_t dataBits = 8;
-    uint32_t stopBits = 1;
-    uint32_t parity = 0;  // 0: None, 1: Odd, 2: Even
-    uint32_t moduleClk = 48000000U;
-    
-    // stop warning for now
-    (void)rxBuffer;
+void test_uart(uint32_t txBaseAddr, uint32_t rxBaseAddr)
+{
+    static const uint8_t txBuffer[] = "Hello UART polling!\n";
+    uint8_t rxBuffer[sizeof(txBuffer)];
+    uint32_t receivedCount;
 
-    printf("UART TEST...");
+    memset(rxBuffer, 0, sizeof(rxBuffer));
 
-    // Initialize UART
-    UARTInit(baseAddr, moduleClk, baudRate, dataBits, stopBits, parity);
+    printf("UART polling test: connect P9_16 (UART6_TX) to P8_28 (UART8_RX)\n");
+    printf("UART polling test: tx=0x%08lx rx=0x%08lx baud=%lu\n",
+           (unsigned long)txBaseAddr,
+           (unsigned long)rxBaseAddr,
+           (unsigned long)UART_TEST_BAUD_RATE);
 
-    // Send data over UART
-    UARTSend(baseAddr, txBuffer, sizeof(txBuffer) - 1);
-    printf("done!\n");
+    UARTInit(txBaseAddr, UART_MODULE_CLOCK_HZ, UART_TEST_BAUD_RATE,
+             UART_TEST_DATA_BITS, UART_TEST_STOP_BITS, UART_TEST_PARITY);
+    if (rxBaseAddr != txBaseAddr) {
+        UARTInit(rxBaseAddr, UART_MODULE_CLOCK_HZ, UART_TEST_BAUD_RATE,
+                 UART_TEST_DATA_BITS, UART_TEST_STOP_BITS, UART_TEST_PARITY);
+    }
+
+    UARTDrainRx(rxBaseAddr);
+    UARTSend(txBaseAddr, txBuffer, sizeof(txBuffer) - 1U);
+
+    receivedCount = UARTReceiveWithTimeout(rxBaseAddr, rxBuffer,
+                                           sizeof(txBuffer) - 1U,
+                                           UART_RX_TIMEOUT_US);
+    rxBuffer[receivedCount] = '\0';
+
+    printf("UART polling RX %lu/%lu bytes: \"%s\"\n",
+           (unsigned long)receivedCount,
+           (unsigned long)(sizeof(txBuffer) - 1U),
+           (char *)rxBuffer);
+
+    if ((receivedCount == (sizeof(txBuffer) - 1U)) &&
+        (memcmp(txBuffer, rxBuffer, sizeof(txBuffer) - 1U) == 0)) {
+        printf("UART polling RX test passed\n");
+        return;
+    }
+
+    printf("UART polling RX test failed\n");
 }

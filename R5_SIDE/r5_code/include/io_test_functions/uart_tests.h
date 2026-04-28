@@ -14,6 +14,9 @@
 #define BBAI64_UART8_BASE                                                                             (0x2880000UL)
 #define BBAI64_UART9_BASE                                                                             (0x2890000UL)
 
-void test_uart(uint32_t baseAddr);
+#define UART_TEST_TX_BASE                                                                              BBAI64_UART6_BASE
+#define UART_TEST_RX_BASE                                                                              BBAI64_UART8_BASE
+
+void test_uart(uint32_t txBaseAddr, uint32_t rxBaseAddr);
 
 #endif // UART_TESTS_H

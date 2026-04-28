@@ -8,6 +8,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - To test quadrature encoder reading, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
 - To see PWM work, connect an LED to P9_25.
 - To see SPI7, connect a logic analyzer to P9_28 (CS), P9_31 (CLK) and P9_30 (MOSI).
+- To try the R5 UART polling self-test, connect P9_16 (UART6_TX) to P8_28 (UART8_RX).
 - *SCROLL DOWN BELOW for build and execution instructions*
 
 
@@ -21,7 +22,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
 - **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
 - **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
-- **R5 UART writing**: "Hello UART" prints from P9_16 (UART6_TX) at 19200 baud.
+- **R5 UART TX, and polling RX**: P9_16 (UART6_TX) to P8_28 (UART8_RX) polling example.
 
 ### Implemented but not used by test code yet
 - **Shared Memory**: Linux-R5 memory sharing (`SHARED_CODE/include/shared_mem.h`, `SharedMemoryRegion* sharedMem`). **Warning**: 16-bit aligned reads/writes required to avoid crashes; standard `memcpy()` will crash.
@@ -33,7 +34,6 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **I2C Linux**: Tested, working; need to write nice example code.
 - **CAN Bus**: No progress.
 - **R5 I2C**: Planned, stuck on interrupt routing issues (`R5_SIDE/r5_code/include/io_test_functions/i2c_tests.h`).
-- **R5 UART reading**: Have not attempted yet.
 - **R5 SPI reading**: Have not attempted yet.
 
 

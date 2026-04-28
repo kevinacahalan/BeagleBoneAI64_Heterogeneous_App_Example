@@ -70,7 +70,7 @@ int main()
 
     test_spi_mcspi7(0);
     test_eqep1_with_gpio_encoder_simulation();
-    test_uart(BBAI64_UART6_BASE);
+    test_uart(UART_TEST_TX_BASE, UART_TEST_RX_BASE);
     run_pwm_test(5);
     burn_time_pretending_to_do_stuff(800, 1200);
 
