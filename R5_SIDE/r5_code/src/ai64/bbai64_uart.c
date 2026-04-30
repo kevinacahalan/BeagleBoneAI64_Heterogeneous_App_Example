@@ -101,6 +101,55 @@ static bool bbai64_uart_handle_is_valid(const bbai64_uart_t *uart)
     return bbai64_uart_config_is_valid(&uart->config);
 }
 
+/*
+ * Advance a streaming marker match by one byte while preserving any suffix
+ * that is also a prefix of the marker. This lets the receiver resync on
+ * overlapping patterns such as 0xAA 0xAA 0x55 without rewinding or buffering
+ * the entire incoming stream.
+ */
+static uint8_t bbai64_uart_next_marker_match_length(const uint8_t *marker,
+                                                    uint8_t marker_length,
+                                                    uint8_t matched_length,
+                                                    uint8_t byte)
+{
+    uint8_t max_candidate;
+    uint8_t sequence_length;
+
+    if ((marker == NULL) || (marker_length == 0U)) {
+        return 0U;
+    }
+
+    if (matched_length > marker_length) {
+        matched_length = marker_length;
+    }
+
+    sequence_length = matched_length + 1U;
+    max_candidate = (sequence_length < marker_length) ? sequence_length : marker_length;
+
+    for (uint8_t candidate = max_candidate; candidate > 0U; candidate--) {
+        const uint8_t suffix_start = sequence_length - candidate;
+        bool matches = true;
+
+        for (uint8_t index = 0U; index < candidate; index++) {
+            const uint8_t sequence_index = suffix_start + index;
+            const uint8_t sequence_byte = (sequence_index < matched_length) ?
+                                          marker[sequence_index] :
+                                          byte;
+
+            if (sequence_byte != marker[index]) {
+                matches = false;
+                break;
+            }
+        }
+
+        if (matches) {
+            return candidate;
+        }
+    }
+
+    return 0U;
+}
+
 static uint8_t bbai64_uart_frame_length_size_bytes(bbai64_uart_frame_length_t length_type)
 {
     switch (length_type) {
@@ -167,6 +216,12 @@ static bool bbai64_uart_frame_config_is_valid(const bbai64_uart_frame_config_t *
            (config->checksum_type == BBAI64_UART_FRAME_CHECKSUM_NONE);
 }
 
+/*
+ * Convert API payload length into the protocol's on-wire length field.
+ * length_adjustment covers protocols whose length includes extra bytes
+ * beyond the payload, or excludes bytes the caller still wants treated as
+ * payload by the rest of this API.
+ */
 static bool bbai64_uart_frame_encode_length(const bbai64_uart_frame_config_t *config,
                                             uint32_t payload_length,
                                             uint8_t *length_bytes,
@@ -214,6 +269,11 @@ static bool bbai64_uart_frame_encode_length(const bbai64_uart_frame_config_t *co
     }
 }
 
+/*
+ * Inverse of bbai64_uart_frame_encode_length(). Once the wire length has
+ * been parsed, translate it back into the payload byte count expected by
+ * the rest of the read path.
+ */
 static bool bbai64_uart_frame_decode_payload_length(const bbai64_uart_frame_config_t *config,
                                                     const uint8_t *length_bytes,
                                                     uint32_t *payload_length)
@@ -264,6 +324,11 @@ static void bbai64_uart_checksum_state_init(bbai64_uart_checksum_state_t *state,
     }
 }
 
+/*
+ * Feed bytes through the selected checksum engine in wire order. The framing
+ * layer decides which sections participate; this helper only owns the
+ * algorithm-specific state update.
+ */
 static void bbai64_uart_checksum_state_update(bbai64_uart_checksum_state_t *state,
                                               const uint8_t *data,
                                               uint32_t length)
@@ -308,6 +373,11 @@ static void bbai64_uart_checksum_state_update(bbai64_uart_checksum_state_t *stat
     }
 }
 
+/*
+ * Build the checksum exactly as the peer sees the frame on the wire.
+ * Scope flags let protocols include any combination of header, length, and
+ * payload without duplicating checksum logic in the read and write paths.
+ */
 static void bbai64_uart_frame_compute_checksum(const bbai64_uart_frame_config_t *config,
                                                const uint8_t *length_bytes,
                                                uint8_t length_size,
@@ -321,6 +391,9 @@ static void bbai64_uart_frame_compute_checksum(const bbai64_uart_frame_config_t 
     if ((config == NULL) || (checksum_bytes == NULL)) {
         return;
     }
+
+    checksum_bytes[0] = 0U;
+    checksum_bytes[1] = 0U;
 
     bbai64_uart_checksum_state_init(&checksum_state, config->checksum_type);
 
@@ -415,6 +488,11 @@ static bool bbai64_uart_discard_bytes_before_deadline(const bbai64_uart_t *uart,
     return true;
 }
 
+/*
+ * Scan until the full start marker appears or the deadline expires.
+ * Non-matching bytes are treated as noise or partial frames and discarded so
+ * the parser can recover even when it starts mid-stream.
+ */
 static bool bbai64_uart_read_start_marker_before_deadline(const bbai64_uart_t *uart,
                                                           const bbai64_uart_frame_config_t *config,
                                                           uint64_t deadline_ticks)
@@ -431,12 +509,10 @@ static bool bbai64_uart_read_start_marker_before_deadline(const bbai64_uart_t *u
             return false;
         }
 
-        if (byte == config->start_bytes[matched]) {
-            matched++;
-            continue;
-        }
-
-        matched = (byte == config->start_bytes[0]) ? 1U : 0U;
+        matched = bbai64_uart_next_marker_match_length(config->start_bytes,
+                                                       config->start_bytes_length,
+                                                       matched,
+                                                       byte);
     }
 
     return true;
@@ -566,7 +642,13 @@ bool bbai64_uart_init(bbai64_uart_t *uart, const bbai64_uart_config_t *config)
     uint32_t fifo_config;
     uint32_t operating_mode;
 
-    if ((uart == NULL) || !bbai64_uart_config_is_valid(config)) {
+    if (uart == NULL) {
+        return false;
+    }
+
+    bbai64_uart_deinit(uart);
+
+    if (!bbai64_uart_config_is_valid(config)) {
         return false;
     }
 
@@ -611,6 +693,7 @@ void bbai64_uart_deinit(bbai64_uart_t *uart)
         return;
     }
 
+    memset(&uart->config, 0, sizeof(uart->config));
     uart->is_initialized = false;
 }
 
@@ -777,6 +860,12 @@ void bbai64_uart_frame_config_init(bbai64_uart_frame_config_t *config)
     config->length_adjustment = 0;
 }
 
+/*
+ * Return total bytes placed on the wire for a payload of this size.
+ * The adjusted length only changes the numeric value written into the length
+ * field. The frame still carries the original payload bytes, so the byte count
+ * here continues to use payload_length.
+ */
 uint32_t bbai64_uart_frame_encoded_size(const bbai64_uart_frame_config_t *config, uint32_t payload_length)
 {
     uint8_t length_bytes[2];
@@ -801,6 +890,11 @@ uint32_t bbai64_uart_frame_encoded_size(const bbai64_uart_frame_config_t *config
            (uint32_t)config->end_bytes_length;
 }
 
+/*
+ * Serialize the frame directly to UART instead of building a temporary
+ * contiguous packet buffer. That keeps stack usage predictable on the R5 while
+ * still supporting configurable framing layouts.
+ */
 bool bbai64_uart_write_frame(const bbai64_uart_t *uart, const bbai64_uart_frame_config_t *frame_config,
                              const uint8_t *payload, uint32_t payload_length)
 {
@@ -842,6 +936,12 @@ bool bbai64_uart_write_frame(const bbai64_uart_t *uart, const bbai64_uart_frame_
            bbai64_uart_write(uart, frame_config->end_bytes, frame_config->end_bytes_length);
 }
 
+/*
+ * Parse exactly one framed packet from the byte stream. The routine is
+ * intentionally strict: it resynchronizes on the start marker, validates the
+ * encoded length, drains oversized frames to preserve alignment, and then
+ * checks both the end marker and checksum before reporting success.
+ */
 bbai64_uart_frame_read_status_t bbai64_uart_read_frame(const bbai64_uart_t *uart,
                                                        const bbai64_uart_frame_config_t *frame_config,
                                                        uint8_t *payload,
@@ -887,6 +987,13 @@ bbai64_uart_frame_read_status_t bbai64_uart_read_frame(const bbai64_uart_t *uart
     }
 
     if ((frame_payload_length > 0U) && ((payload == NULL) || (frame_payload_length > payload_buffer_length))) {
+        *payload_length = frame_payload_length;
+
+        /*
+         * Consume the rest of the current frame before returning so the next
+         * read starts at the following frame boundary instead of in the middle
+         * of this oversized payload.
+         */
         if (!bbai64_uart_discard_bytes_before_deadline(uart,
                                                        frame_payload_length + (uint32_t)checksum_size +
                                                            (uint32_t)frame_config->end_bytes_length,

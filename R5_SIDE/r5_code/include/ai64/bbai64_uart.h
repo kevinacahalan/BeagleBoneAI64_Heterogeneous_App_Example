@@ -81,6 +81,9 @@ enum
     BBAI64_UART_FRAME_CHECKSUM_ON_HEADER = (1U << 0),
     BBAI64_UART_FRAME_CHECKSUM_ON_LENGTH = (1U << 1),
     BBAI64_UART_FRAME_CHECKSUM_ON_PAYLOAD = (1U << 2),
+    BBAI64_UART_FRAME_CHECKSUM_SCOPE_ALL = BBAI64_UART_FRAME_CHECKSUM_ON_HEADER |
+                                           BBAI64_UART_FRAME_CHECKSUM_ON_LENGTH |
+                                           BBAI64_UART_FRAME_CHECKSUM_ON_PAYLOAD,
 };
 
 typedef struct
@@ -90,9 +93,12 @@ typedef struct
     uint8_t end_bytes[BBAI64_UART_FRAME_MAX_MARKER_BYTES];
     uint8_t end_bytes_length;
     bbai64_uart_frame_length_t length_type;
+    /* Wire length = payload length + length_adjustment. */
     int16_t length_adjustment;
     bbai64_uart_frame_checksum_t checksum_type;
+    /* Select which frame parts feed into the checksum calculation. */
     uint8_t checksum_scope_flags;
+    /* Applies only to 16-bit checksums. */
     bool checksum_big_endian;
 } bbai64_uart_frame_config_t;
 
@@ -142,10 +148,12 @@ uint32_t bbai64_uart_read_available(const bbai64_uart_t *uart, uint8_t *buffer, 
 uint32_t bbai64_uart_read_blocking(const bbai64_uart_t *uart, uint8_t *buffer, uint32_t length);
 uint32_t bbai64_uart_read_with_timeout(const bbai64_uart_t *uart, uint8_t *buffer, uint32_t length, uint64_t timeout_us);
 
+/* Default frame: 0xAA 0x55 start marker, U16 little-endian length, no checksum. */
 void bbai64_uart_frame_config_init(bbai64_uart_frame_config_t *config);
 uint32_t bbai64_uart_frame_encoded_size(const bbai64_uart_frame_config_t *config, uint32_t payload_length);
 bool bbai64_uart_write_frame(const bbai64_uart_t *uart, const bbai64_uart_frame_config_t *frame_config,
                              const uint8_t *payload, uint32_t payload_length);
+/* On BBAI64_UART_FRAME_READ_BUFFER_TOO_SMALL, payload_length receives the required payload size. */
 bbai64_uart_frame_read_status_t bbai64_uart_read_frame(const bbai64_uart_t *uart,
                                                        const bbai64_uart_frame_config_t *frame_config,
                                                        uint8_t *payload,

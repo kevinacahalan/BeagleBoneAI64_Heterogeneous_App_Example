@@ -197,9 +197,7 @@ static void test_uart_framed_packets(const bbai64_uart_t *txUart, const bbai64_u
         frameConfig.length_type = BBAI64_UART_FRAME_LENGTH_U16_LE;
         frameConfig.length_adjustment = 1;
         frameConfig.checksum_type = BBAI64_UART_FRAME_CHECKSUM_CRC16_IBM;
-        frameConfig.checksum_scope_flags = BBAI64_UART_FRAME_CHECKSUM_ON_HEADER |
-                                           BBAI64_UART_FRAME_CHECKSUM_ON_LENGTH |
-                                           BBAI64_UART_FRAME_CHECKSUM_ON_PAYLOAD;
+        frameConfig.checksum_scope_flags = BBAI64_UART_FRAME_CHECKSUM_SCOPE_ALL;
 
         totalCount++;
         if (run_framed_packet_case(txUart,
@@ -227,9 +225,7 @@ static void test_uart_framed_packets(const bbai64_uart_t *txUart, const bbai64_u
         frameConfig.start_bytes_length = 2U;
         frameConfig.length_type = BBAI64_UART_FRAME_LENGTH_U16_BE;
         frameConfig.checksum_type = BBAI64_UART_FRAME_CHECKSUM_CRC16_CCITT_FALSE;
-        frameConfig.checksum_scope_flags = BBAI64_UART_FRAME_CHECKSUM_ON_HEADER |
-                                           BBAI64_UART_FRAME_CHECKSUM_ON_LENGTH |
-                                           BBAI64_UART_FRAME_CHECKSUM_ON_PAYLOAD;
+        frameConfig.checksum_scope_flags = BBAI64_UART_FRAME_CHECKSUM_SCOPE_ALL;
         frameConfig.checksum_big_endian = true;
 
         totalCount++;
