@@ -105,9 +105,11 @@ PDK libraries used by this project (`.aer5f` extension), under both `debug` and 
 ./scripts/build.sh --clean --both
 ```
 
-`BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile:
-- `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5, links PDK **debug** `.aer5f` libs
+`BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile for most drivers:
+- `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5, links PDK **debug** `.aer5f` libs where available
 - `release`: `-O3 -DNDEBUG` for both, links PDK **release** `.aer5f` libs
+
+Note: TI only builds sciclient and IPC for `mcu2_0` under the **release** profile, so those two always link from `.../release/` even in a debug app build.
 
 `--setup` / `--build-pdk` build **both** PDK profiles so either mode can link.
 
