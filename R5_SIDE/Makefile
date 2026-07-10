@@ -82,13 +82,13 @@ OSAL_LIBS = $(OSAL_LIBPATH)/ti.osal.aer5f
 BOARD_LIBPATH := $(PDK_PATH)/packages/ti/board/lib/j721e_evm/r5f/$(PDK_PROFILE)
 BOARD_LIBS = $(BOARD_LIBPATH)/ti.board.aer5f
 
-#SCI_CLIENT
-SCI_CLIENT_LIBPATH := $(PDK_PATH)/packages/ti/drv/sciclient/lib/j721e/mcu2_0/$(PDK_PROFILE)
+#SCI_CLIENT / IPC: TI only builds these for mcu2_0 under release/ (no debug/ tree).
+SCI_CLIENT_LIBPATH := $(PDK_PATH)/packages/ti/drv/sciclient/lib/j721e/mcu2_0/release
 SCI_CLIENT_LIBS := $(SCI_CLIENT_LIBPATH)/sciclient.aer5f
 SCI_CLIENT_LIBS += $(SCI_CLIENT_LIBPATH)/sciclient_hs.aer5f
 
 #IPC
-IPC_LIBPATH := $(PDK_PATH)/packages/ti/drv/ipc/lib/j721e/mcu2_0/$(PDK_PROFILE)
+IPC_LIBPATH := $(PDK_PATH)/packages/ti/drv/ipc/lib/j721e/mcu2_0/release
 IPC_LIBS := $(IPC_LIBPATH)/ipc_baremetal.aer5f
 
 # SPI

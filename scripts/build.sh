@@ -311,9 +311,10 @@ check_r5_pdk_libs() {
         "${pdk_path}/packages/ti/csl/lib/j721e/r5f/${profile}/ti.csl.aer5f"
         "${pdk_path}/packages/ti/osal/lib/nonos/j721e/r5f/${profile}/ti.osal.aer5f"
         "${pdk_path}/packages/ti/board/lib/j721e_evm/r5f/${profile}/ti.board.aer5f"
-        "${pdk_path}/packages/ti/drv/sciclient/lib/j721e/mcu2_0/${profile}/sciclient.aer5f"
-        "${pdk_path}/packages/ti/drv/sciclient/lib/j721e/mcu2_0/${profile}/sciclient_hs.aer5f"
-        "${pdk_path}/packages/ti/drv/ipc/lib/j721e/mcu2_0/${profile}/ipc_baremetal.aer5f"
+        # TI only builds sciclient/IPC for mcu2_0 under release/ (no debug/ tree).
+        "${pdk_path}/packages/ti/drv/sciclient/lib/j721e/mcu2_0/release/sciclient.aer5f"
+        "${pdk_path}/packages/ti/drv/sciclient/lib/j721e/mcu2_0/release/sciclient_hs.aer5f"
+        "${pdk_path}/packages/ti/drv/ipc/lib/j721e/mcu2_0/release/ipc_baremetal.aer5f"
         "${pdk_path}/packages/ti/drv/spi/lib/j721e/r5f/${profile}/ti.drv.spi.aer5f"
         "${pdk_path}/packages/ti/drv/spi/lib/j721e/r5f/${profile}/ti.drv.spi.dma.aer5f"
         "${pdk_path}/packages/ti/drv/uart/lib/j721e/r5f/${profile}/ti.drv.uart.aer5f"
