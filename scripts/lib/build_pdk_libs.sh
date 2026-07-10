@@ -13,10 +13,11 @@ PROFILE_OVERRIDE=""
 
 print_help() {
     cat <<EOF
-Usage: ./scripts/build_pdk_libs.sh [options]
+Usage: ./scripts/lib/build_pdk_libs.sh [options]
 
 Build PDK libraries required by the R5 firmware (runs inside the TI container).
 By default builds both debug and release profiles.
+Prefer: ./scripts/build.sh --build-pdk (or --setup).
 
 Options:
     --ti-sdk-dir <path>   SDK install directory (default: \$HOME/ti)
@@ -68,7 +69,7 @@ fi
 SDK_ROOT="${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
 if [[ ! -d "${SDK_ROOT}" ]]; then
     echo "Error: SDK not found at ${SDK_ROOT}" >&2
-    echo "Run ./scripts/fetch_ti_sdk.sh first (or ./scripts/docker_cross_build.sh --fetch-sdk)." >&2
+    echo "Run ./scripts/build.sh --fetch-sdk first (or ./scripts/lib/fetch_ti_sdk.sh)." >&2
     exit 1
 fi
 

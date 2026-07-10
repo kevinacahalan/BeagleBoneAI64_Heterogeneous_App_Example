@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-# shellcheck source=sdk_config.sh
-source "${SCRIPT_DIR}/sdk_config.sh"
+# shellcheck source=lib/sdk_config.sh
+source "${SCRIPT_DIR}/lib/sdk_config.sh"
 
 DEBIAN_IMAGE="${DEBIAN_IMAGE_NAME}"
 TI_IMAGE="${TI_IMAGE_NAME}"
@@ -25,9 +32,39 @@ USER_FLAGS=()
 CLEAN_ONLY="false"
 ACTION_REQUESTED="false"
 
+print_header() {
+    echo -e "${BLUE}============================================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}============================================================${NC}"
+}
+
+print_info() {
+    echo -e "${CYAN}[info]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[ok]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[warn]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[error]${NC} $1" >&2
+}
+
+validate_not_root() {
+    if [[ "${EUID}" -eq 0 ]]; then
+        print_error "Run this script as a regular user, not with sudo."
+        return 1
+    fi
+    return 0
+}
+
 print_help() {
     cat <<EOF
-Usage: ./scripts/docker_cross_build.sh [options]
+Usage: ./scripts/build.sh [options]
 
 Build inside containers (Podman or Docker):
   - Debian 13 image: Linux aarch64 cross-build (gpiod v2)
@@ -52,15 +89,15 @@ Options:
 Notes:
     - BUILD_MODE selects compiler flags and matching PDK library profile for R5.
     - --setup builds both PDK debug and release profiles.
-    - First-time setup: ./scripts/docker_cross_build.sh --setup
+    - First-time setup: ./scripts/build.sh --setup
     - SDK ${TI_SDK_VERSION} is mounted at /home/builder/ti in the TI container.
 
 Examples:
-    ./scripts/docker_cross_build.sh --setup
-    ./scripts/docker_cross_build.sh --both
-    ./scripts/docker_cross_build.sh --linux --release
-    ./scripts/docker_cross_build.sh --r5 --ti-sdk-dir "\$HOME/ti"
-    ./scripts/docker_cross_build.sh --clean --both
+    ./scripts/build.sh --setup
+    ./scripts/build.sh --both
+    ./scripts/build.sh --linux --release
+    ./scripts/build.sh --r5 --ti-sdk-dir "\$HOME/ti"
+    ./scripts/build.sh --clean --both
 EOF
 }
 
@@ -118,7 +155,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --ti-sdk-dir)
             if [[ $# -lt 2 ]]; then
-                echo "Error: --ti-sdk-dir requires a value" >&2
+                print_error "--ti-sdk-dir requires a value"
                 exit 1
             fi
             TI_SDK_DIR="$2"
@@ -135,7 +172,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo "Error: Unknown option: $1" >&2
+            print_error "Unknown option: $1"
             print_help
             exit 1
             ;;
@@ -143,12 +180,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "${ACTION_REQUESTED}" != "true" ]]; then
+    print_header "BeagleBone AI64 build"
+    print_info "Project: ${REPO_ROOT}"
+    print_info "All builds run inside Podman/Docker."
+    print_info "First-time R5 setup: ./scripts/build.sh --setup"
+    echo
     print_help
     exit 0
 fi
 
+validate_not_root || exit 1
+
 if [[ "${BUILD_MODE}" != "debug" && "${BUILD_MODE}" != "release" ]]; then
-    echo "Error: BUILD_MODE must be debug or release" >&2
+    print_error "BUILD_MODE must be debug or release"
     exit 1
 fi
 
@@ -156,11 +200,11 @@ fi
 # Explicit --r5 may combine fetch/build-pdk with a firmware build.
 if [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" || "${SETUP_ONLY}" == "true" ]]; then
     if [[ "${EXPLICIT_TARGET}" == "linux" ]]; then
-        echo "Error: --fetch-sdk, --build-pdk, and --setup are TI/R5 operations and cannot be combined with --linux." >&2
+        print_error "--fetch-sdk, --build-pdk, and --setup are TI/R5 operations and cannot be combined with --linux."
         exit 1
     fi
     if [[ "${EXPLICIT_TARGET}" == "both" ]]; then
-        echo "Error: --fetch-sdk, --build-pdk, and --setup cannot be combined with --both. Run --setup first, then --both." >&2
+        print_error "--fetch-sdk, --build-pdk, and --setup cannot be combined with --both. Run --setup first, then --both."
         exit 1
     fi
     if [[ "${EXPLICIT_TARGET}" == "" ]]; then
@@ -182,7 +226,7 @@ if [[ "${CLEAN_ONLY}" != "true" && "${SETUP_ONLY}" != "true" && -z "${TARGET}" ]
         TARGET="r5"
         SETUP_ONLY="true"
     else
-        echo "Error: a target is required: --linux, --r5, or --both" >&2
+        print_error "A target is required: --linux, --r5, or --both"
         print_help
         exit 1
     fi
@@ -200,15 +244,15 @@ elif command -v podman >/dev/null 2>&1; then
     MOUNT_SUFFIX=":Z"
     USER_FLAGS=("--userns=keep-id")
 else
-    echo "Error: Neither docker nor podman command found. Install a container engine first." >&2
+    print_error "Neither docker nor podman command found. Install a container engine first."
     exit 1
 fi
 
-echo "Using container engine: ${CONTAINER_ENGINE}"
+print_info "Using container engine: ${CONTAINER_ENGINE}"
 
 if [[ -d "${REPO_ROOT}/build" && ! -w "${REPO_ROOT}/build" ]]; then
-    echo "Error: ${REPO_ROOT}/build is not writable by $(whoami)." >&2
-    echo "Fix once on host, then retry: sudo chown -R $(id -u):$(id -g) ${REPO_ROOT}/build" >&2
+    print_error "${REPO_ROOT}/build is not writable by $(whoami)."
+    print_error "Fix once on host, then retry: sudo chown -R $(id -u):$(id -g) ${REPO_ROOT}/build"
     exit 1
 fi
 
@@ -220,7 +264,7 @@ build_image() {
         return 0
     fi
 
-    echo "Building image ${image_name} from ${dockerfile_path} ..."
+    print_info "Building image ${image_name} from ${dockerfile_path} ..."
     "${CONTAINER_ENGINE}" build -f "${dockerfile_path}" -t "${image_name}" "${REPO_ROOT}"
 }
 
@@ -251,15 +295,15 @@ check_r5_pdk_libs() {
     local pdk_path
 
     if [[ ! -d "${sdk_root}" ]]; then
-        echo "Error: TI SDK not found at ${sdk_root}" >&2
-        echo "Run: ./scripts/docker_cross_build.sh --fetch-sdk" >&2
+        print_error "TI SDK not found at ${sdk_root}"
+        print_error "Run: ./scripts/build.sh --fetch-sdk"
         exit 1
     fi
 
     pdk_path="$(sdk_resolve_pdk_path "${sdk_root}" || true)"
     if [[ -z "${pdk_path}" ]]; then
-        echo "Error: pdk_jacinto_* not found under ${sdk_root}" >&2
-        echo "Run: ./scripts/docker_cross_build.sh --fetch-sdk" >&2
+        print_error "pdk_jacinto_* not found under ${sdk_root}"
+        print_error "Run: ./scripts/build.sh --fetch-sdk"
         exit 1
     fi
 
@@ -280,13 +324,13 @@ check_r5_pdk_libs() {
     local missing=0
     for lib in "${required_libs[@]}"; do
         if [[ ! -f "${lib}" ]]; then
-            echo "Missing PDK library: ${lib}" >&2
+            print_error "Missing PDK library: ${lib}"
             missing=1
         fi
     done
 
     if [[ "${missing}" -ne 0 ]]; then
-        echo "Error: PDK ${profile} libraries are missing. Run: ./scripts/docker_cross_build.sh --build-pdk" >&2
+        print_error "PDK ${profile} libraries are missing. Run: ./scripts/build.sh --build-pdk"
         exit 1
     fi
 }
@@ -297,11 +341,11 @@ run_linux_build() {
     local cmd=""
     if [[ "${CLEAN_ONLY}" == "true" ]]; then
         cmd="make -C /workspace/LINUX_SIDE clean"
-        echo "Cleaning Linux build artifacts in Debian 13 container ..."
+        print_header "Cleaning Linux build artifacts"
     else
         cmd="make -C /workspace/LINUX_SIDE clean && make -C /workspace/LINUX_SIDE CROSS_COMPILE=true BUILD_MODE=${BUILD_MODE}"
-        echo "Running Linux build in Debian 13 container ..."
-        echo "BUILD_MODE=${BUILD_MODE}"
+        print_header "Linux build (${BUILD_MODE})"
+        print_info "Debian 13 container"
     fi
 
     run_container "${DEBIAN_IMAGE}" false "${cmd}"
@@ -318,18 +362,18 @@ run_r5_work() {
 
     if [[ "${CLEAN_ONLY}" == "true" ]]; then
         cmd_parts+=("make -C /workspace/R5_SIDE clean")
-        echo "Cleaning R5 build artifacts in TI container ..."
+        print_header "Cleaning R5 build artifacts"
         run_ti_container "${cmd_parts[*]}"
         return 0
     fi
 
     if [[ "${FETCH_SDK}" == "true" ]]; then
-        cmd_parts+=("/workspace/scripts/fetch_ti_sdk.sh --ti-sdk-dir /home/builder/ti")
+        cmd_parts+=("/workspace/scripts/lib/fetch_ti_sdk.sh --ti-sdk-dir /home/builder/ti")
     fi
 
     if [[ "${BUILD_PDK}" == "true" ]]; then
         # Default build_pdk_libs.sh builds both debug and release profiles.
-        cmd_parts+=("/workspace/scripts/build_pdk_libs.sh --ti-sdk-dir /home/builder/ti")
+        cmd_parts+=("/workspace/scripts/lib/build_pdk_libs.sh --ti-sdk-dir /home/builder/ti")
     fi
 
     if [[ "${SETUP_ONLY}" != "true" && ( "${TARGET}" == "r5" || "${TARGET}" == "both" ) ]]; then
@@ -337,14 +381,14 @@ run_r5_work() {
             check_r5_pdk_libs
         fi
         cmd_parts+=("make -C /workspace/R5_SIDE clean && make -C /workspace/R5_SIDE BUILD_MODE=${BUILD_MODE}")
-        echo "Running R5 firmware build in TI container ..."
-        echo "BUILD_MODE=${BUILD_MODE} (PDK profile=${BUILD_MODE})"
+        print_header "R5 firmware build (${BUILD_MODE})"
+        print_info "PDK profile=${BUILD_MODE}"
     elif [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" ]]; then
-        echo "Running TI SDK setup in TI container ..."
+        print_header "TI SDK / PDK setup"
     fi
 
     if [[ ${#cmd_parts[@]} -eq 0 ]]; then
-        echo "Error: nothing to run in TI container." >&2
+        print_error "Nothing to run in TI container."
         exit 1
     fi
 
@@ -371,20 +415,20 @@ case "${TARGET}" in
         run_r5_work
         ;;
     *)
-        echo "Error: unknown target: ${TARGET}" >&2
+        print_error "Unknown target: ${TARGET}"
         exit 1
         ;;
 esac
 
 if [[ "${CLEAN_ONLY}" == "true" ]]; then
-    echo "Clean completed for target=${TARGET}."
+    print_success "Clean completed for target=${TARGET}."
 elif [[ "${SETUP_ONLY}" == "true" ]]; then
-    echo "SDK/PDK setup completed under ${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
-    echo "PDK libraries (debug + release) are under that tree; firmware ELFs are produced by --r5 or --both."
+    print_success "SDK/PDK setup completed under ${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
+    print_info "PDK libraries (debug + release) are under that tree; firmware ELFs are produced by --r5 or --both."
 elif [[ "${TARGET}" == "linux" ]]; then
-    echo "Linux build completed. Artifacts are under ./build (and LINUX_SIDE/build)."
+    print_success "Linux build completed. Artifacts are under ./build (and LINUX_SIDE/build)."
 elif [[ "${TARGET}" == "r5" ]]; then
-    echo "R5 build completed. Firmware ELF is under ./build/R5_0/"
+    print_success "R5 build completed. Firmware ELF is under ./build/R5_0/"
 else
-    echo "Container build completed. Artifacts are under ./build/"
+    print_success "Build completed. Artifacts are under ./build/"
 fi

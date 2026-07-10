@@ -76,8 +76,7 @@ Processor SDK RTOS **11.02.01.03** for J721E:
 
 ```bash
 # Downloads ~3 GB SDK to ~/ti, extracts it, and builds PDK debug + release libraries (30–60+ min)
-./scripts/docker_cross_build.sh --setup
-# or: ./scripts/build_script.sh --setup
+./scripts/build.sh --setup
 ```
 
 Manual SDK URL if needed:
@@ -93,26 +92,17 @@ PDK libraries used by this project (`.aer5f` extension), under both `debug` and 
 
 ```bash
 # Build everything (Debian 13 for Linux, then TI for R5)
-./scripts/docker_cross_build.sh --both
+./scripts/build.sh --both
 
 # Individual targets
-./scripts/docker_cross_build.sh --linux
-./scripts/docker_cross_build.sh --r5
+./scripts/build.sh --linux
+./scripts/build.sh --r5
 
 # Release-flavored application + matching PDK release libs
-./scripts/docker_cross_build.sh --both --release
+./scripts/build.sh --both --release
 
 # Clean artifacts
-./scripts/docker_cross_build.sh --clean --both
-```
-
-Equivalent wrapper (delegates to `docker_cross_build.sh`):
-
-```bash
-./scripts/build_script.sh --setup
-./scripts/build_script.sh --both
-./scripts/build_script.sh --linux --release
-./scripts/build_script.sh --clean --both
+./scripts/build.sh --clean --both
 ```
 
 `BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile:
@@ -126,13 +116,13 @@ There is no supported x86 local-run build for this example app. The Linux build 
 #### Optional: rebuild PDK libraries only
 
 ```bash
-./scripts/docker_cross_build.sh --build-pdk
+./scripts/build.sh --build-pdk
 ```
 
 Use a custom SDK location:
 
 ```bash
-./scripts/docker_cross_build.sh --r5 --ti-sdk-dir /path/to/ti
+./scripts/build.sh --r5 --ti-sdk-dir /path/to/ti
 ```
 
 The SDK directory must be writable by your user (required for `--fetch-sdk`) and must contain the extracted SDK folder (do not use symlinks that point outside the mounted directory).

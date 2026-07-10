@@ -10,7 +10,7 @@ SHOW_HELP="false"
 
 print_help() {
     cat <<EOF
-Usage: ./scripts/fetch_ti_sdk.sh [options]
+Usage: ./scripts/lib/fetch_ti_sdk.sh [options]
 
 Download and extract Processor SDK RTOS ${TI_SDK_VERSION} for J721E if not already present.
 
@@ -92,7 +92,7 @@ else
     echo "Verifying tarball listing ..."
     if ! tar -tzf "${TARBALL_PATH}" >/dev/null; then
         echo "Error: tarball appears corrupt: ${TARBALL_PATH}" >&2
-        echo "Delete it and re-run --fetch-sdk." >&2
+        echo "Delete it and re-run: ./scripts/build.sh --fetch-sdk" >&2
         exit 1
     fi
 
