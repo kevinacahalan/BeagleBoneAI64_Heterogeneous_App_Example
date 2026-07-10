@@ -50,6 +50,16 @@ TI_SDK_VERSION ?= 11_02_01_03
 TI_SDK_ROOT = $(HOME)/ti/ti-processor-sdk-rtos-j721e-evm-$(TI_SDK_VERSION)
 PDK_PATH := $(firstword $(wildcard $(TI_SDK_ROOT)/pdk_jacinto_*))
 
+# Build mode: debug or release (app CFLAGS and matching PDK .aer5f profile).
+BUILD_MODE ?= debug
+ifeq ($(BUILD_MODE), release)
+	PDK_PROFILE := release
+else ifeq ($(BUILD_MODE), debug)
+	PDK_PROFILE := debug
+else
+$(error Unknown BUILD_MODE, set BUILD_MODE=[debug, release])
+endif
+
 # Require SDK for build targets, but allow clean/help without it.
 requires_pdk := $(filter-out clean help,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),all))
 ifeq ($(PDK_PATH),)
@@ -60,40 +70,39 @@ endif
 
 
 # CSL
-CSL_LIBPATH := $(PDK_PATH)/packages/ti/csl/lib/j721e/r5f/debug
+CSL_LIBPATH := $(PDK_PATH)/packages/ti/csl/lib/j721e/r5f/$(PDK_PROFILE)
 #CSL_LIBS = $(CSL_LIBPATH)/ti.csl.aer5f $(CSL_LIBPATH)/ti.csl.init.aer5f
 CSL_LIBS = $(CSL_LIBPATH)/ti.csl.aer5f
 
 #OSAL
-OSAL_LIBPATH := $(PDK_PATH)/packages/ti/osal/lib/nonos/j721e/r5f/debug
+OSAL_LIBPATH := $(PDK_PATH)/packages/ti/osal/lib/nonos/j721e/r5f/$(PDK_PROFILE)
 OSAL_LIBS = $(OSAL_LIBPATH)/ti.osal.aer5f
 
 #BOARD (not really useful with the bbai64 from my understanding)
-BOARD_LIBPATH := $(PDK_PATH)/packages/ti/board/lib/j721e_evm/r5f/debug
+BOARD_LIBPATH := $(PDK_PATH)/packages/ti/board/lib/j721e_evm/r5f/$(PDK_PROFILE)
 BOARD_LIBS = $(BOARD_LIBPATH)/ti.board.aer5f
 
 #SCI_CLIENT
-SCI_CLIENT_LIBPATH := $(PDK_PATH)/packages/ti/drv/sciclient/lib/j721e/mcu2_0/release
-SCI_CLIENT_LIBS := $(SCI_CLIENT_LIBPATH)/sciclient.aer5f 
+SCI_CLIENT_LIBPATH := $(PDK_PATH)/packages/ti/drv/sciclient/lib/j721e/mcu2_0/$(PDK_PROFILE)
+SCI_CLIENT_LIBS := $(SCI_CLIENT_LIBPATH)/sciclient.aer5f
 SCI_CLIENT_LIBS += $(SCI_CLIENT_LIBPATH)/sciclient_hs.aer5f
 
 #IPC
-IPC_LIBPATH := $(PDK_PATH)/packages/ti/drv/ipc/lib/j721e/mcu2_0/release
-IPC_LIBS += $(IPC_LIBPATH)/ipc.aer5f
+IPC_LIBPATH := $(PDK_PATH)/packages/ti/drv/ipc/lib/j721e/mcu2_0/$(PDK_PROFILE)
 IPC_LIBS := $(IPC_LIBPATH)/ipc_baremetal.aer5f
 
 # SPI
-SPI_LIBPATH := $(PDK_PATH)/packages/ti/drv/spi/lib/j721e/r5f/debug
-SPI_LIBS := $(SPI_LIBPATH)/ti.drv.spi.aer5f 
+SPI_LIBPATH := $(PDK_PATH)/packages/ti/drv/spi/lib/j721e/r5f/$(PDK_PROFILE)
+SPI_LIBS := $(SPI_LIBPATH)/ti.drv.spi.aer5f
 SPI_LIBS += $(SPI_LIBPATH)/ti.drv.spi.dma.aer5f
 
 # UART
-UART_LIBPATH := $(PDK_PATH)/packages/ti/drv/uart/lib/j721e/r5f/debug
-UART_LIBS := $(UART_LIBPATH)/ti.drv.uart.aer5f 
+UART_LIBPATH := $(PDK_PATH)/packages/ti/drv/uart/lib/j721e/r5f/$(PDK_PROFILE)
+UART_LIBS := $(UART_LIBPATH)/ti.drv.uart.aer5f
 UART_LIBS += $(UART_LIBPATH)/ti.drv.uart.dma.aer5f
 
 # I2C
-I2C_LIBPATH := $(PDK_PATH)/packages/ti/drv/i2c/lib/j721e/r5f/debug
+I2C_LIBPATH := $(PDK_PATH)/packages/ti/drv/i2c/lib/j721e/r5f/$(PDK_PROFILE)
 I2C_LIBS = $(I2C_LIBPATH)/ti.drv.i2c.aer5f
 
 # Setup LDFLAGS
@@ -125,15 +134,10 @@ CFGENERAL = -fpic -ffreestanding -ffunction-sections -fdata-sections -fno-except
 WARNINGS = -W -Wall -Wshadow -fno-common
 STANDARD =
 
-# Build mode: debug or release
-BUILD_MODE ?= debug
-
 ifeq ($(BUILD_MODE), release)
 	CFLAGS := -g -O3 $(WARNINGS) $(CFGENERAL) $(DEFINES) $(INCLUDES) -DNDEBUG
-else ifeq ($(BUILD_MODE), debug)
-	CFLAGS := -g3 -Og $(WARNINGS) $(CFGENERAL) $(DEFINES) $(INCLUDES)
 else
-$(error Unknown BUILD_MODE, set BUILD_MODE=[debug, release])
+	CFLAGS := -g3 -Og $(WARNINGS) $(CFGENERAL) $(DEFINES) $(INCLUDES)
 endif
 
 .PHONY: clean all help
@@ -158,8 +162,8 @@ help:
 	@echo "------------------------"
 	@echo "BUILD_MODE=[debug, release]"
 	@echo "    Default: debug"
-	@echo "    debug: -g3 -Og (optimized for debugging)"
-	@echo "    release: -O3 -DNDEBUG (optimized for performance)"
+	@echo "    debug: -g3 -Og and PDK debug libraries"
+	@echo "    release: -O3 -DNDEBUG and PDK release libraries"
 	@echo ""
 	@echo "Examples:"
 	@echo "---------"
