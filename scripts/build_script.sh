@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,6 +17,12 @@ BUILD_MODE="debug"
 CLEAN_ONLY=false
 SHOW_HELP=false
 ACTION_REQUESTED=false
+FETCH_SDK=false
+BUILD_PDK=false
+SETUP_ONLY=false
+SKIP_IMAGE_BUILD=false
+TI_SDK_DIR=""
+MODE_SET=false
 
 print_header() {
     echo -e "${BLUE}============================================================${NC}"
@@ -45,30 +51,36 @@ print_help() {
 Example build script (container-backed)
 
 Usage:
-    ./build_script.sh [TARGET] [OPTIONS]
+    ./scripts/build_script.sh [TARGET] [OPTIONS]
 
 Run with no arguments to show this help.
 
 Targets:
-    --linux          Build only the Linux side for the BeagleBone target
-    --r5             Build only the R5 firmware
-    --both           Build both targets
+    --linux              Build only the Linux side for the BeagleBone target
+    --r5                 Build only the R5 firmware
+    --both               Build both targets
 
 Options:
-    --debug          Debug build (default)
-    --release        Release build
-    --clean          Clean Linux and R5 build artifacts and exit
-    --help           Show this help text
+    --debug              Debug build (default): app flags + PDK debug libs
+    --release            Release build: app flags + PDK release libs
+    --clean              Clean Linux and R5 build artifacts and exit
+    --setup              Fetch TI SDK and build PDK debug+release libs
+    --fetch-sdk          Download/extract TI SDK only
+    --build-pdk          Build PDK debug+release libraries only
+    --ti-sdk-dir <path>  Host path for TI SDK (default: \$HOME/ti)
+    --skip-image-build   Reuse existing container images
+    --help               Show this help text
 
 Notes:
     Builds run inside Podman/Docker via docker_cross_build.sh.
-    First-time R5 setup: ./scripts/docker_cross_build.sh --setup
+    First-time R5 setup: ./scripts/build_script.sh --setup
 
 Examples:
-    ./build_script.sh --both
-    ./build_script.sh --linux --release
-    ./build_script.sh --r5
-    ./build_script.sh --clean --both
+    ./scripts/build_script.sh --setup
+    ./scripts/build_script.sh --both
+    ./scripts/build_script.sh --linux --release
+    ./scripts/build_script.sh --r5
+    ./scripts/build_script.sh --clean --both
 EOF
 }
 
@@ -76,7 +88,7 @@ print_intro() {
     print_header "BeagleBone AI64 build script"
     print_info "Project: ${PROJECT_ROOT}"
     print_info "Builds run inside Podman/Docker (see scripts/docker_cross_build.sh)."
-    print_info "First-time R5 setup: ./scripts/docker_cross_build.sh --setup"
+    print_info "First-time R5 setup: ./scripts/build_script.sh --setup"
     echo
 }
 
@@ -92,11 +104,13 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --debug)
             BUILD_MODE="debug"
+            MODE_SET=true
             ACTION_REQUESTED=true
             shift
             ;;
         --release)
             BUILD_MODE="release"
+            MODE_SET=true
             ACTION_REQUESTED=true
             shift
             ;;
@@ -117,6 +131,37 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --clean)
             CLEAN_ONLY=true
+            ACTION_REQUESTED=true
+            shift
+            ;;
+        --setup)
+            SETUP_ONLY=true
+            FETCH_SDK=true
+            BUILD_PDK=true
+            ACTION_REQUESTED=true
+            shift
+            ;;
+        --fetch-sdk)
+            FETCH_SDK=true
+            ACTION_REQUESTED=true
+            shift
+            ;;
+        --build-pdk)
+            BUILD_PDK=true
+            ACTION_REQUESTED=true
+            shift
+            ;;
+        --ti-sdk-dir)
+            if [[ $# -lt 2 ]]; then
+                print_error "--ti-sdk-dir requires a value"
+                exit 1
+            fi
+            TI_SDK_DIR="$2"
+            ACTION_REQUESTED=true
+            shift 2
+            ;;
+        --skip-image-build)
+            SKIP_IMAGE_BUILD=true
             ACTION_REQUESTED=true
             shift
             ;;
@@ -141,7 +186,18 @@ fi
 
 validate_not_root || exit 1
 
-if [[ "${CLEAN_ONLY}" != true && -z "${TARGET}" ]]; then
+SETUP_WORK=false
+if [[ "${SETUP_ONLY}" == true || "${FETCH_SDK}" == true || "${BUILD_PDK}" == true ]]; then
+    SETUP_WORK=true
+fi
+
+if [[ "${CLEAN_ONLY}" != true && "${SETUP_WORK}" != true && -z "${TARGET}" ]]; then
+    if [[ "${MODE_SET}" == true || "${SKIP_IMAGE_BUILD}" == true || -n "${TI_SDK_DIR}" ]]; then
+        print_error "A target is required: --linux, --r5, or --both"
+        echo
+        print_help
+        exit 1
+    fi
     print_error "A target is required: --linux, --r5, or --both"
     echo
     print_help
@@ -153,19 +209,42 @@ if [[ "${CLEAN_ONLY}" == true && -z "${TARGET}" ]]; then
 fi
 
 ARGS=()
+
+if [[ "${SETUP_ONLY}" == true ]]; then
+    ARGS+=("--setup")
+elif [[ "${FETCH_SDK}" == true || "${BUILD_PDK}" == true ]]; then
+    if [[ "${FETCH_SDK}" == true ]]; then
+        ARGS+=("--fetch-sdk")
+    fi
+    if [[ "${BUILD_PDK}" == true ]]; then
+        ARGS+=("--build-pdk")
+    fi
+fi
+
 if [[ "${CLEAN_ONLY}" == true ]]; then
-  ARGS+=("--clean" "--${TARGET}")
-  print_header "Cleaning build artifacts"
-  print_info "Target=${TARGET}"
-else
-  ARGS+=("--${TARGET}")
-  if [[ "${BUILD_MODE}" == "release" ]]; then
-    ARGS+=("--release")
-  else
-    ARGS+=("--debug")
-  fi
-  print_header "Building (${TARGET}, ${BUILD_MODE})"
-  print_info "Delegating to docker_cross_build.sh"
+    ARGS+=("--clean" "--${TARGET}")
+    print_header "Cleaning build artifacts"
+    print_info "Target=${TARGET}"
+elif [[ -n "${TARGET}" ]]; then
+    ARGS+=("--${TARGET}")
+    if [[ "${BUILD_MODE}" == "release" ]]; then
+        ARGS+=("--release")
+    else
+        ARGS+=("--debug")
+    fi
+    print_header "Building (${TARGET}, ${BUILD_MODE})"
+    print_info "Delegating to docker_cross_build.sh"
+elif [[ "${SETUP_WORK}" == true ]]; then
+    print_header "TI SDK / PDK setup"
+    print_info "Delegating to docker_cross_build.sh"
+fi
+
+if [[ -n "${TI_SDK_DIR}" ]]; then
+    ARGS+=("--ti-sdk-dir" "${TI_SDK_DIR}")
+fi
+
+if [[ "${SKIP_IMAGE_BUILD}" == true ]]; then
+    ARGS+=("--skip-image-build")
 fi
 
 "${SCRIPT_DIR}/docker_cross_build.sh" "${ARGS[@]}"

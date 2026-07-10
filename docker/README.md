@@ -19,20 +19,23 @@ Debian 13 provides `libgpiod-dev:arm64` (gpiod v2 API) required by the Linux app
 |---|---|
 | **Image** | `localhost/ti-bbai64-build:latest` |
 | **Dockerfile** | [`Dockerfile.ti`](Dockerfile.ti) |
-| **Base** | [`ghcr.io/texasinstruments/ubuntu-distro`](https://github.com/TexasInstruments/ti-docker-images) |
-| **Used for** | R5 firmware, SDK download, PDK `all_libs` (`--r5`, `--setup`) |
+| **Base** | [`ghcr.io/texasinstruments/ubuntu-distro:latest`](https://github.com/TexasInstruments/ti-docker-images) (pin a digest in `Dockerfile.ti` if you need bit-for-bit reproducible image builds) |
+| **Used for** | R5 firmware, SDK download, PDK `all_libs` debug+release (`--r5`, `--setup`) |
 
 The TI image matches TI's recommended environment for Processor SDK / Yocto-style builds. The SDK tarball (~3 GB) is **not** baked into the image; mount `~/ti` from the host.
 
 ## Quick reference
 
 ```bash
-# Build both images (happens automatically on first build)
+# Show help (no args does not build)
+./scripts/docker_cross_build.sh
+
+# Build images as needed, then compile
 ./scripts/docker_cross_build.sh --linux    # Debian 13 only
 ./scripts/docker_cross_build.sh --r5       # TI image only
 ./scripts/docker_cross_build.sh --both     # Debian 13, then TI
 
-# One-time SDK + PDK setup (TI container)
+# One-time SDK + PDK setup (TI container; builds debug and release PDK libs)
 ./scripts/docker_cross_build.sh --setup
 ```
 

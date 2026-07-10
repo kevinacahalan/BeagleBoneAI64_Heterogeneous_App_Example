@@ -15,19 +15,28 @@ DEBIAN_IMAGE_NAME="localhost/debian13-bbai64-build:latest"
 TI_IMAGE_NAME="localhost/ti-bbai64-build:latest"
 
 # Resolve PDK path under an extracted SDK root (prints path or empty).
+# Fails if zero or more than one pdk_jacinto_* directory exists.
 sdk_resolve_pdk_path() {
     local sdk_root="$1"
-    local pdk_path
+    local -a matches=()
 
     if [[ -z "${sdk_root}" || ! -d "${sdk_root}" ]]; then
         return 1
     fi
 
-    # shellcheck disable=SC2012
-    pdk_path="$(ls -d "${sdk_root}"/pdk_jacinto_* 2>/dev/null | head -n 1 || true)"
-    if [[ -n "${pdk_path}" && -d "${pdk_path}" ]]; then
-        printf '%s\n' "${pdk_path}"
+    shopt -s nullglob
+    matches=("${sdk_root}"/pdk_jacinto_*)
+    shopt -u nullglob
+
+    if [[ ${#matches[@]} -eq 1 && -d "${matches[0]}" ]]; then
+        printf '%s\n' "${matches[0]}"
         return 0
+    fi
+
+    if [[ ${#matches[@]} -gt 1 ]]; then
+        echo "Error: multiple pdk_jacinto_* directories under ${sdk_root}:" >&2
+        printf '  %s\n' "${matches[@]}" >&2
+        return 1
     fi
 
     return 1

@@ -75,8 +75,9 @@ See [`docker/README.md`](docker/README.md) for details on why two images are use
 Processor SDK RTOS **11.02.01.03** for J721E:
 
 ```bash
-# Downloads ~3 GB SDK to ~/ti, extracts it, and builds PDK debug libraries (30–60+ min)
+# Downloads ~3 GB SDK to ~/ti, extracts it, and builds PDK debug + release libraries (30–60+ min)
 ./scripts/docker_cross_build.sh --setup
+# or: ./scripts/build_script.sh --setup
 ```
 
 Manual SDK URL if needed:
@@ -85,7 +86,7 @@ Manual SDK URL if needed:
 After extract, the SDK lives at:
 `~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*`
 
-PDK prebuilt libraries used by this project (debug profile, `.aer5f` extension):
+PDK libraries used by this project (`.aer5f` extension), under both `debug` and `release` profiles:
 `~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*/packages/ti/[LIBRARY]/lib/j721e/...`
 
 #### Build commands
@@ -98,26 +99,27 @@ PDK prebuilt libraries used by this project (debug profile, `.aer5f` extension):
 ./scripts/docker_cross_build.sh --linux
 ./scripts/docker_cross_build.sh --r5
 
-# Release-flavored application build
+# Release-flavored application + matching PDK release libs
 ./scripts/docker_cross_build.sh --both --release
 
 # Clean artifacts
-./scripts/docker_cross_build.sh --clean
+./scripts/docker_cross_build.sh --clean --both
 ```
 
 Equivalent wrapper (delegates to `docker_cross_build.sh`):
 
 ```bash
+./scripts/build_script.sh --setup
 ./scripts/build_script.sh --both
 ./scripts/build_script.sh --linux --release
-./scripts/build_script.sh --clean
+./scripts/build_script.sh --clean --both
 ```
 
-`BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources:
-- `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5
-- `release`: `-O3 -DNDEBUG` for both
+`BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile:
+- `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5, links PDK **debug** `.aer5f` libs
+- `release`: `-O3 -DNDEBUG` for both, links PDK **release** `.aer5f` libs
 
-For R5, `BUILD_MODE` does not switch PDK library paths; the project links PDK **debug** libraries.
+`--setup` / `--build-pdk` build **both** PDK profiles so either mode can link.
 
 There is no supported x86 local-run build for this example app. The Linux build target is the BeagleBone `aarch64` binary.
 
