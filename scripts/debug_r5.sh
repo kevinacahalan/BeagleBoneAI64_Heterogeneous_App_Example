@@ -58,7 +58,7 @@ do_start() {
 
     if [ ! -f "$R5_ELF" ]; then
         echo "Error: R5 ELF not found at $R5_ELF"
-        echo "Build first with: ./scripts/build_script.sh --r5"
+        echo "Build first with: ./scripts/build.sh --r5"
         exit 1
     fi
 

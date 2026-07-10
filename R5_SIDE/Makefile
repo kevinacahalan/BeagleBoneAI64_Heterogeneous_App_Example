@@ -64,7 +64,7 @@ endif
 requires_pdk := $(filter-out clean help,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),all))
 ifeq ($(PDK_PATH),)
 ifneq ($(requires_pdk),)
-$(error PDK not found under $(TI_SDK_ROOT). Run ./scripts/docker_cross_build.sh --setup)
+$(error PDK not found under $(TI_SDK_ROOT). Run ./scripts/build.sh --setup)
 endif
 endif
 

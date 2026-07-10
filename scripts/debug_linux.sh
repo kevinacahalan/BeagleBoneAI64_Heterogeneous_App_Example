@@ -63,7 +63,7 @@ do_stop() {
 do_start() {
     if [ ! -f "$LINUX_BIN" ]; then
         echo "Error: Linux binary not found at $LINUX_BIN"
-        echo "Build first with: ./scripts/build_script.sh --linux"
+        echo "Build first with: ./scripts/build.sh --linux"
         exit 1
     fi
 

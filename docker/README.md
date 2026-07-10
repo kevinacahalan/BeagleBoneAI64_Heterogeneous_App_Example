@@ -28,15 +28,15 @@ The TI image matches TI's recommended environment for Processor SDK / Yocto-styl
 
 ```bash
 # Show help (no args does not build)
-./scripts/docker_cross_build.sh
+./scripts/build.sh
 
 # Build images as needed, then compile
-./scripts/docker_cross_build.sh --linux    # Debian 13 only
-./scripts/docker_cross_build.sh --r5       # TI image only
-./scripts/docker_cross_build.sh --both     # Debian 13, then TI
+./scripts/build.sh --linux    # Debian 13 only
+./scripts/build.sh --r5       # TI image only
+./scripts/build.sh --both     # Debian 13, then TI
 
 # One-time SDK + PDK setup (TI container; builds debug and release PDK libs)
-./scripts/docker_cross_build.sh --setup
+./scripts/build.sh --setup
 ```
 
 See the main [README](../README.md) for full build instructions.
