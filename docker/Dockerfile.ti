@@ -1,0 +1,25 @@
+FROM ghcr.io/texasinstruments/ubuntu-distro:latest
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+USER root
+
+# R5 firmware and PDK library builds only (Linux builds use Dockerfile.debian13).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash \
+        build-essential \
+        make \
+        git \
+        ca-certificates \
+        wget \
+        gcc-arm-none-eabi \
+        binutils-arm-none-eabi \
+        libnewlib-arm-none-eabi \
+        libtinfo5 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /home/builder && chmod 1777 /home/builder
+WORKDIR /workspace
+
+CMD ["/bin/bash"]

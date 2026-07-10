@@ -12,9 +12,11 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+TARGET=""
 BUILD_MODE="debug"
-TARGET="both"
 CLEAN_ONLY=false
+SHOW_HELP=false
+ACTION_REQUESTED=false
 
 print_header() {
     echo -e "${BLUE}============================================================${NC}"
@@ -40,35 +42,42 @@ print_error() {
 
 print_help() {
     cat << EOF
-Example build script
+Example build script (container-backed)
 
 Usage:
     ./build_script.sh [TARGET] [OPTIONS]
 
+Run with no arguments to show this help.
+
 Targets:
     --linux          Build only the Linux side for the BeagleBone target
     --r5             Build only the R5 firmware
-    --both           Build both targets (default)
+    --both           Build both targets
 
 Options:
-    --debug          Debug build for Linux outputs (default)
-    --release        Release build for Linux outputs
+    --debug          Debug build (default)
+    --release        Release build
     --clean          Clean Linux and R5 build artifacts and exit
     --help           Show this help text
 
 Notes:
-    - BUILD_MODE affects compiler flags for both Linux and R5 sources.
-    - Debug means -Og -g3 for Linux and -g3 -Og for R5.
-    - Release means -O3 -DNDEBUG for both Linux and R5 sources.
-    - TI PDK library selection for R5 is unchanged by BUILD_MODE.
+    Builds run inside Podman/Docker via docker_cross_build.sh.
+    First-time R5 setup: ./scripts/docker_cross_build.sh --setup
 
 Examples:
     ./build_script.sh --both
     ./build_script.sh --linux --release
     ./build_script.sh --r5
-    ./build_script.sh --both --release
-    ./build_script.sh --clean
+    ./build_script.sh --clean --both
 EOF
+}
+
+print_intro() {
+    print_header "BeagleBone AI64 build script"
+    print_info "Project: ${PROJECT_ROOT}"
+    print_info "Builds run inside Podman/Docker (see scripts/docker_cross_build.sh)."
+    print_info "First-time R5 setup: ./scripts/docker_cross_build.sh --setup"
+    echo
 }
 
 validate_not_root() {
@@ -79,123 +88,85 @@ validate_not_root() {
     return 0
 }
 
-check_dependencies() {
-    local missing=0
-
-    if ! command -v make >/dev/null 2>&1; then
-        print_error "make is not installed"
-        missing=1
-    fi
-
-    if [ "$TARGET" = "linux" ] || [ "$TARGET" = "both" ]; then
-        if [ "$(uname -m)" = "x86_64" ]; then
-            if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
-                print_error "aarch64-linux-gnu-gcc is not installed"
-                missing=1
-            fi
-        elif ! command -v gcc >/dev/null 2>&1; then
-            print_error "gcc is not installed"
-            missing=1
-        fi
-    fi
-
-    if [ "$TARGET" = "r5" ] || [ "$TARGET" = "both" ]; then
-        if ! command -v arm-none-eabi-gcc >/dev/null 2>&1; then
-            print_error "arm-none-eabi-gcc is not installed"
-            missing=1
-        fi
-    fi
-
-    return $missing
-}
-
-clean_all() {
-    print_header "Cleaning build artifacts"
-    make -C "$PROJECT_ROOT/LINUX_SIDE" clean
-    make -C "$PROJECT_ROOT/R5_SIDE" clean
-    print_success "Clean completed"
-}
-
-build_linux() {
-    local make_args=(BUILD_MODE="$BUILD_MODE")
-
-    if [ "$(uname -m)" = "x86_64" ]; then
-        make_args+=(CROSS_COMPILE=true)
-    fi
-
-    print_header "Building Linux side for BeagleBone target"
-    print_info "BUILD_MODE=$BUILD_MODE"
-    make -C "$PROJECT_ROOT/LINUX_SIDE" "${make_args[@]}"
-    print_success "Built $PROJECT_ROOT/build/linux/LINUX_SIDE_aarch64"
-}
-
-build_r5() {
-    print_header "Building R5 firmware"
-    print_info "BUILD_MODE=$BUILD_MODE"
-    make -C "$PROJECT_ROOT/R5_SIDE" BUILD_MODE="$BUILD_MODE"
-    print_success "Built $PROJECT_ROOT/build/R5_0/r5f_r5f0_0.elf"
-}
-
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --debug)
             BUILD_MODE="debug"
+            ACTION_REQUESTED=true
             shift
             ;;
         --release)
             BUILD_MODE="release"
+            ACTION_REQUESTED=true
             shift
             ;;
         --linux)
             TARGET="linux"
+            ACTION_REQUESTED=true
             shift
             ;;
         --r5)
             TARGET="r5"
+            ACTION_REQUESTED=true
             shift
             ;;
         --both)
             TARGET="both"
+            ACTION_REQUESTED=true
             shift
             ;;
         --clean)
             CLEAN_ONLY=true
+            ACTION_REQUESTED=true
             shift
             ;;
         --help|-h|help)
-            print_help
-            exit 0
+            SHOW_HELP=true
+            shift
             ;;
         *)
             print_error "Unknown option: $1"
+            echo
             print_help
             exit 1
             ;;
     esac
 done
 
-validate_not_root || exit 1
-
-if [ "$CLEAN_ONLY" = true ]; then
-    clean_all
+if [[ "${SHOW_HELP}" == true ]] || [[ "${ACTION_REQUESTED}" != true ]]; then
+    print_intro
+    print_help
     exit 0
 fi
 
-if ! check_dependencies; then
+validate_not_root || exit 1
+
+if [[ "${CLEAN_ONLY}" != true && -z "${TARGET}" ]]; then
+    print_error "A target is required: --linux, --r5, or --both"
+    echo
+    print_help
     exit 1
 fi
 
-case "$TARGET" in
-    linux)
-        build_linux
-        ;;
-    r5)
-        build_r5
-        ;;
-    both)
-        build_linux
-        build_r5
-        ;;
-esac
+if [[ "${CLEAN_ONLY}" == true && -z "${TARGET}" ]]; then
+    TARGET="both"
+fi
 
+ARGS=()
+if [[ "${CLEAN_ONLY}" == true ]]; then
+  ARGS+=("--clean" "--${TARGET}")
+  print_header "Cleaning build artifacts"
+  print_info "Target=${TARGET}"
+else
+  ARGS+=("--${TARGET}")
+  if [[ "${BUILD_MODE}" == "release" ]]; then
+    ARGS+=("--release")
+  else
+    ARGS+=("--debug")
+  fi
+  print_header "Building (${TARGET}, ${BUILD_MODE})"
+  print_info "Delegating to docker_cross_build.sh"
+fi
+
+"${SCRIPT_DIR}/docker_cross_build.sh" "${ARGS[@]}"
 print_success "Build process completed successfully"

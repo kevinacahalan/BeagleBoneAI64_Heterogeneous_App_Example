@@ -2,10 +2,10 @@
 // pdk CSL layer library, <ti/csl/csl_gpio.h>
 //
 // <ti/csl/csl_gpio.h> is located at: 
-// `ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages/ti/csl/csl_gpio.h`
+// `~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*/packages/ti/csl/csl_gpio.h`
 //
 // The compiled .a file is located at:
-// `ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages/ti/csl/lib/j721e/r5f/debug/ti.csl.aer5f`
+// `~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*/packages/ti/csl/lib/j721e/r5f/debug/ti.csl.aer5f`
 //
 // The Ti functions that you'll be calling are located in the <ti/csl/src/ip/gpio/V0/gpio.h>
 // header file. That header file is included by ti/csl/csl_gpio.h, so you'll not need to include it.
