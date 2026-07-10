@@ -57,81 +57,87 @@ If anybody wants to contribute random stuff, please do.
 
 
 
-### Setup and compile ti RTOS SDK
-Make sure to use **Debian12** for building. It will make your life easier. On windows use WSL Debian 12.
+### Setup and build (container-first)
 
-1.  Run `wget https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-bA0wfI4X2g/10.00.00.05/ti-processor-sdk-rtos-j721e-evm-10_00_00_05.tar.gz`
-2.  Use `tar -xzf ti-processor-sdk-rtos-j721e-evm-10_00_00_05.tar.gz` to decompress
-3.  Place decompressed sdk folder in ~/ti/
-4.  Run `sudo apt install libtinfo5`  needed for ti sdk build
+All builds run inside **Podman** or **Docker** using two images:
 
-#### Build sdk/pdk:
-1. Change to the directory `~/ti/ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages` using `cd`.
-2. 
-    From the `packages` directory within the Jacinto PDK, run `make -s all_libs BUILD_PROFILE=release` to build the release libraries, and run `make -s all_libs BUILD_PROFILE=debug` to build the debug libraries.
+| Image | Used for |
+|-------|----------|
+| `localhost/debian13-bbai64-build:latest` | Linux aarch64 cross-build (gpiod v2) |
+| `localhost/ti-bbai64-build:latest` | R5 firmware, TI SDK, PDK libraries |
 
-    OPTIONAL:
-    If you want to build the TI examples you may have to direct TI to also use the system compiler for some reason... You will also need to install the `mono-complete` package.
+See [`docker/README.md`](docker/README.md) for details on why two images are used.
 
-    For gcc arm to work install `arm-none-eabi-gcc`. Next setup the environment variables that TI uses to find the compiler. 
-    - `export TOOLCHAIN_PATH_GCC=/usr`
-    - `export TOOLCHAIN_PATH_GCC_ARCH64=/usr`
-    - `export GCC_ARCH64_BIN_PREFIX=arm-none-eabi`
+**Requirements:** Podman or Docker on the host. No host-installed cross-compilers required.
 
-    Run `make all_examples CORE=mcu2_0` to compile examples. NOTE that `make all_examples` does not actually compile all examples, it only compiles the examples for mcu1_0. Some examples do not work with mcu1_0.
+#### One-time setup (SDK + PDK libraries)
 
-3.  The library release .a files are located at `~/ti/ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages/ti/[LIBRARY]/lib/j721e/r5f/release`, and the debug files are at `~/ti/ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27/packages/ti/[LIBRARY]/lib/j721e/r5f/release/debug`.
-    
-    These ".a" files have an unusual extension, ".aer5f".
+Processor SDK RTOS **11.02.01.03** for J721E:
 
-
-#### To build R5 side code:
-- Build TI sdk and place it at correct location as directed above.
-- install `gcc-arm-none-eabi`
-- Run `make` from folder with R5 makefile
-- Run `make BUILD_MODE=release` for a release-flavored R5 build
-
-#### To build Linux side code:
 ```bash
-sudo apt-get update
-sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-sudo dpkg --add-architecture arm64
-sudo apt-get update
-sudo apt-get install -y libgpiod-dev:arm64
-
-cd LINUX_SIDE
-make CROSS_COMPILE=true
-make CROSS_COMPILE=true BUILD_MODE=release
+# Downloads ~3 GB SDK to ~/ti, extracts it, and builds PDK debug libraries (30–60+ min)
+./scripts/docker_cross_build.sh --setup
 ```
 
-`BUILD_MODE` affects compiler flags for both Linux and R5 sources:
-- `debug` is the default and uses `-Og -g3` for Linux and `-g3 -Og` for R5
-- `release` uses `-O3 -DNDEBUG` for both Linux and R5 source builds
+Manual SDK URL if needed:
+`https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-bA0wfI4X2g/11.02.01.03/ti-processor-sdk-rtos-j721e-evm-11_02_01_03.tar.gz`
 
-For R5, `BUILD_MODE` only changes how your project sources are compiled. It does not currently switch the TI PDK library paths between debug and release variants.
+After extract, the SDK lives at:
+`~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*`
+
+PDK prebuilt libraries used by this project (debug profile, `.aer5f` extension):
+`~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*/packages/ti/[LIBRARY]/lib/j721e/...`
+
+#### Build commands
+
+```bash
+# Build everything (Debian 13 for Linux, then TI for R5)
+./scripts/docker_cross_build.sh --both
+
+# Individual targets
+./scripts/docker_cross_build.sh --linux
+./scripts/docker_cross_build.sh --r5
+
+# Release-flavored application build
+./scripts/docker_cross_build.sh --both --release
+
+# Clean artifacts
+./scripts/docker_cross_build.sh --clean
+```
+
+Equivalent wrapper (delegates to `docker_cross_build.sh`):
+
+```bash
+./scripts/build_script.sh --both
+./scripts/build_script.sh --linux --release
+./scripts/build_script.sh --clean
+```
+
+`BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources:
+- `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5
+- `release`: `-O3 -DNDEBUG` for both
+
+For R5, `BUILD_MODE` does not switch PDK library paths; the project links PDK **debug** libraries.
 
 There is no supported x86 local-run build for this example app. The Linux build target is the BeagleBone `aarch64` binary.
 
-#### To build everything at once:
-Host build script:
-- `[SCRIPT_DIR]/build_script.sh --both`
+#### Optional: rebuild PDK libraries only
 
-- Other supported host build targets:
-- `[SCRIPT_DIR]/build_script.sh --linux`
-- `[SCRIPT_DIR]/build_script.sh --r5`
-- `[SCRIPT_DIR]/build_script.sh --both --release`
-- `[SCRIPT_DIR]/build_script.sh --clean`
+```bash
+./scripts/docker_cross_build.sh --build-pdk
+```
 
-Docker build script:
-- `[SCRIPT_DIR]/docker_cross_build.sh --both`
+Use a custom SDK location:
 
-- Other supported Docker build targets:
-- `[SCRIPT_DIR]/docker_cross_build.sh --linux`
-- `[SCRIPT_DIR]/docker_cross_build.sh --r5`
-- `[SCRIPT_DIR]/docker_cross_build.sh --both --release`
-- `[SCRIPT_DIR]/docker_cross_build.sh --clean`
+```bash
+./scripts/docker_cross_build.sh --r5 --ti-sdk-dir /path/to/ti
+```
 
-The normal build script and `docker_cross_build.sh` now use the same target-selection arguments and the same `--debug` / `--release` meanings.
+The SDK directory must be writable by your user (required for `--fetch-sdk`) and must contain the extracted SDK folder (do not use symlinks that point outside the mounted directory).
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" ~/ti
+```
 
 #### To build and copy to board:
 `[SCRIPT_DIR]/compile_and_push.sh --ip [BEAGLE_IP]`
@@ -333,7 +339,7 @@ video https://www.youtube.com/watch?v=n3u3QgnAvV8.
 - **[TDA4VM datasheet](https://www.ti.com/lit/ds/symlink/tda4vm.pdf?ts=1747602249590)**: Useful for SoC pad/pin stuff.
 - **[Cortex R5 TRM](https://developer.arm.com/documentation/ddi0460/d/?lang=en)**: Technical Reference Manual for the Cortex R5.
 - **[TI RTOS SDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/latest/exports/docs/psdk_rtos/docs/user_guide/overview.html#)**: Overview of the TI RTOS SDK.
-- **[TI PDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/latest/exports/docs/pdk_jacinto_10_01_00_25/docs/pdk_introduction.html#Documentation)**: Links to API guide and user guide.
+- **[TI PDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/latest/exports/docs/pdk_jacinto_11_01_00_17/docs/pdk_introduction.html#Documentation)**: Links to API guide and user guide.
 - **[Processor SDK Linux Software Developer’s Guide](https://texasinstruments.github.io/processor-sdk-doc/processor-sdk-linux-J721E/esd/docs/11_00/devices/J7_Family/linux/index.html)**: Yet another source of documentation.
 - **[UBoot documentation for the board](https://docs.u-boot.org/en/latest/board/beagle/j721e_beagleboneai64.html)**: How booting works.
 - **[IPC for J721E](https://texasinstruments.github.io/processor-sdk-doc/processor-sdk-linux-J721E/esd/docs/11_00/linux/Foundational_Components_IPC_J721E.html)**: J721e sdk documentation explaining how IPC works.

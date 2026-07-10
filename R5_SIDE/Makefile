@@ -45,8 +45,18 @@ DEFINES += -DBAREMETAL
 DEFINES += -DA72_LINUX_OS # Tell TI to not do stuff that Linux already deals with
 DEFINES += -DR5
 
-# MAKE SURE YOU HAVE YOUR PDK INSTALLED AND IN THE CORRECT LOCATION
-PDK_PATH = $(HOME)/ti/ti-processor-sdk-rtos-j721e-evm-10_00_00_05/pdk_jacinto_10_00_00_27
+# Processor SDK RTOS 11 for J721E — PDK folder suffix is discovered at build time.
+TI_SDK_VERSION ?= 11_02_01_03
+TI_SDK_ROOT = $(HOME)/ti/ti-processor-sdk-rtos-j721e-evm-$(TI_SDK_VERSION)
+PDK_PATH := $(firstword $(wildcard $(TI_SDK_ROOT)/pdk_jacinto_*))
+
+# Require SDK for build targets, but allow clean/help without it.
+requires_pdk := $(filter-out clean help,$(if $(MAKECMDGOALS),$(MAKECMDGOALS),all))
+ifeq ($(PDK_PATH),)
+ifneq ($(requires_pdk),)
+$(error PDK not found under $(TI_SDK_ROOT). Run ./scripts/docker_cross_build.sh --setup)
+endif
+endif
 
 
 # CSL
