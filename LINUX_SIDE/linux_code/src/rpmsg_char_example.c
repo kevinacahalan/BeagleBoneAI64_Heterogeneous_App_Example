@@ -194,6 +194,18 @@ static bool is_transport_error(int err)
     return err == EPIPE || err == ENODEV || err == ECONNRESET || err == EBADF || err == EIO || err == ENXIO;
 }
 
+/* Close/abandon the endpoint without DESTROY_EPT (avoids 6.12 rpmsg_char race). */
+static void rpmsg_abandon_endpoint(void)
+{
+    if (rcdev != NULL) {
+        if (rcdev->fd >= 0) {
+            close(rcdev->fd);
+        }
+        rcdev = NULL;
+    }
+    rpmsg_connected = false;
+}
+
 static int get_rpmsg_fd(void)
 {
     if (!rpmsg_connected || rcdev == NULL || rcdev->fd < 0) {
@@ -209,11 +221,19 @@ static int rpmsg_cleanup(void)
     int ret = 0;
 
     if (rcdev != NULL) {
-        ret = rpmsg_char_close(rcdev);
-        rcdev = NULL;
+        if (!is_r5_remoteproc_running()) {
+            /* Bus is already going away — DESTROY_EPT can oops the 6.12 kernel. */
+            log_info("Abandoning RPMSG endpoint without DESTROY_EPT (remoteproc not running)");
+            rpmsg_abandon_endpoint();
+        } else {
+            ret = rpmsg_char_close(rcdev);
+            rcdev = NULL;
+            rpmsg_connected = false;
+        }
+    } else {
+        rpmsg_connected = false;
     }
 
-    rpmsg_connected = false;
     if (rpmsg_initialized) {
         rpmsg_char_exit();
         rpmsg_initialized = false;
@@ -236,14 +256,7 @@ static void rpmsg_mark_disconnected(const char *reason)
         log_warn("RPMSG disconnected (%s)", reason != NULL ? reason : "unknown");
     }
 
-    rpmsg_connected = false;
-    if (rcdev != NULL) {
-        if (rcdev->fd >= 0) {
-            close(rcdev->fd);
-        }
-        rcdev = NULL;
-    }
-
+    rpmsg_abandon_endpoint();
     next_reconnect_attempt_ms = get_monotonic_ms() + RECONNECT_BACKOFF_MS;
 }
 
@@ -302,8 +315,12 @@ static int rpmsg_try_connect(void)
     flags = fcntl(rcdev->fd, F_GETFL, 0);
     if (flags < 0 || fcntl(rcdev->fd, F_SETFL, flags | O_NONBLOCK) < 0) {
         example_perror("Linux: Failed to configure RPMSG endpoint");
-        rpmsg_char_close(rcdev);
-        rcdev = NULL;
+        if (!is_r5_remoteproc_running()) {
+            rpmsg_abandon_endpoint();
+        } else {
+            rpmsg_char_close(rcdev);
+            rcdev = NULL;
+        }
         next_reconnect_attempt_ms = now_ms + RECONNECT_BACKOFF_MS;
         return -1;
     }
@@ -317,8 +334,12 @@ static int rpmsg_try_connect(void)
             errno = EEXAMPLE_RPMSG;
             log_warn("Short write while sending RPMSG ping (%zd/%zu)", bytes_written, sizeof(ping));
         }
-        rpmsg_char_close(rcdev);
-        rcdev = NULL;
+        if (!is_r5_remoteproc_running() || (bytes_written < 0 && is_transport_error(errno))) {
+            rpmsg_abandon_endpoint();
+        } else {
+            rpmsg_char_close(rcdev);
+            rcdev = NULL;
+        }
         next_reconnect_attempt_ms = now_ms + RECONNECT_BACKOFF_MS;
         return -1;
     }

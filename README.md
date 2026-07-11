@@ -1,6 +1,10 @@
 ![demo_image](R5_LINUX.png)
 
-For this example to work, use beagle firmware with kernel 6.12. Make to to have the latest device tree overlay setup for 6.12.
+For this example to work, use a **recent BeagleBoard.org Debian image with a newer TI 6.12 kernel** (`v6.12.x-ti`). R5 remoteproc stop/restart needs the graceful `RP_MBOX_SHUTDOWN` / ACK path in that kernel — older kernels may not have this.
+
+Recommended images:
+- **eMMC flasher:** [BBAI64 Debian 13.3 2026-02-12 Minimal Flasher (v6.12.x-ti)](https://www.beagleboard.org/distros/bbai64-debian-13-3-2026-02-12-minimal-flasher-v6-12-x-ti)
+- **SD card / runtime:** [BBAI64 Debian 13.5 2026-05-19 Minimal (v6.12.x-ti)](https://www.beagleboard.org/distros/bbai64-debian-13-5-2026-05-19-minimal-v6-12-x-ti)
 
 Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
@@ -41,19 +45,20 @@ If anybody wants to contribute random stuff, please do.
 
 
 ### Setup board
-1. Grab debian 6.12 firmware. Flash the emmc, and also an sd card.
-2. Flash emmc with https://www.beagleboard.org/distros/bbai64-debian-12-11-2025-06-30-minimal-flasher-v6-12-x-ti
-3. Flash SD card with https://www.beagleboard.org/distros/bbai64-debian-12-11-2025-06-30-minimal-v6-12-x-ti
+1. Grab a recent Beagle Debian **v6.12.x-ti** image, flash the eMMC, and also an SD card.
+2. Flash eMMC with the [Debian 13.3 Minimal Flasher](https://www.beagleboard.org/distros/bbai64-debian-13-3-2026-02-12-minimal-flasher-v6-12-x-ti)
+3. Flash SD card with the [Debian 13.5 Minimal](https://www.beagleboard.org/distros/bbai64-debian-13-5-2026-05-19-minimal-v6-12-x-ti) runtime image
 4. Power cycle board several times
 5. Run `df -h` to ensure you are now booting from your SD card
-6. Run this to get latest DT source among other important things `sudo apt update ; sudo apt-get dist-upgrade -y`
-7. Compile and install custom_overlays/our-custom-bbai64-overlay.dtso (refer to "Device tree info")
-8. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
-9. Power cycle the board several times
-10. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
-11. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
-12. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
-13. Connect loop jumper wires P8_33<-->P8_34 and P8_35<-->P8-36 for EQEP_1 test.
+6. Run this to get a newer TI kernel / DT packages among other important things: `sudo apt update ; sudo apt-get dist-upgrade -y`
+7. Run `sudo systemctl mask serial-getty@ttyGS0.service` to get around bug where sometimes uart debug login does not show up.
+8. Compile and install custom_overlays/our-custom-bbai64-overlay.dtso (refer to "Device tree info")
+9. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
+10. Power cycle the board several times
+11. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
+12. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
+13. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
+14. Connect loop jumper wires P8_33<-->P8_34 and P8_35<-->P8-36 for EQEP_1 test.
 
 
 
@@ -140,6 +145,29 @@ sudo chown -R "$(id -u):$(id -g)" ~/ti
 
 #### To run:
 `sudo [SCRIPT_DIR]/debug_run.sh` (RUN FROM BOARD, NOT YOUR DEV MACHINE!)
+
+#### R5 start/stop/restart (Linux 6.12)
+
+On a **newer TI 6.12 kernel**, remoteproc stop is not a hard halt: Linux sends `RP_MBOX_SHUTDOWN`, waits for `RP_MBOX_SHUTDOWN_ACK`, then expects the R5 to enter WFI. This firmware implements that path. If stop times out with `can't stop rproc: -16`, the core never ACKed (or the board kernel is too old).
+
+Readiness for reconnect is simple: Linux watches remoteproc sysfs (`running`), waits a short grace period, opens RPMSG, and pings once. When R5 goes away, the client abandons the fd without `RPMSG_DESTROY_EPT` (avoids a known 6.12 `rpmsg_char` race). There is no shared-memory lifecycle handshake.
+
+R5 and Linux restart independently.
+
+```bash
+# Combined session (tmux LINUX_AND_R5):
+sudo ./scripts/debug_run.sh                 # launch + attach
+sudo ./scripts/debug_run.sh restart-r5      # R5 only
+sudo ./scripts/debug_run.sh restart-linux   # Linux only
+sudo ./scripts/debug_run.sh status
+sudo ./scripts/debug_run.sh stop-session    # tmux only; leaves R5 running
+
+# Or control each side directly (also fine while the combined session is up):
+sudo ./scripts/debug_r5.sh start|stop|restart|status
+sudo ./scripts/debug_linux.sh start|stop|restart|status
+```
+
+Quick verify: idle `debug_r5.sh start → stop → start → stop` with `status` showing `offline` and no `-16` in dmesg. Trace should show `SHUTDOWN_ACK status=0`. Linux can stay running across those R5 restarts.
 
 ### Device tree info
 - Copy the overlays from our `custom_overlays/` folder to `/opt/source/dtb-6.12-Beagle/src/arm64/overlays` on the board.

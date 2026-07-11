@@ -78,11 +78,18 @@ int main()
     printf("\nAbout to start listening to Linux\n");
     if (setup_r5_example_talk() != 0) {
         printf("R5: setup_r5_example_talk failed\n");
+        if (ipc_shutdown_requested()) {
+            finalize_ipc_shutdown();
+        }
         return 1;
     }
 
-    while (1) {
+    while (!ipc_shutdown_requested()) {
         process_linux_messages(8);
+
+        if (ipc_shutdown_requested()) {
+            break;
+        }
 
         if (!example_rpmsg_peer_ready()) {
             Osal_delay(100);
@@ -96,11 +103,13 @@ int main()
 
         burn_time_pretending_to_do_stuff(800, 1200);
     }
-    
 
-    while(wait_for_debugger == 1)
+    printf("R5: leaving main loop for remoteproc shutdown\n");
+    (void)teardown_r5_example_talk();
+    finalize_ipc_shutdown();
+
+    while (wait_for_debugger == 1)
         ;
-
 
     printf("R5 hit end of main\n");
     return 0;

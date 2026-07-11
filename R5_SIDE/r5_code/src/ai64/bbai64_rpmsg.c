@@ -32,10 +32,24 @@
  */
 
 /**
- *  \file ipc_testsetup_baremetal.c
+ *  \file bbai64_rpmsg.c
  *
- *  \brief IPC baremetal example code
+ *  \brief IPC baremetal example code (derived from TI ipc_testsetup_baremetal.c)
+ *         plus Linux 6.12 remoteproc graceful shutdown.
  *
+ *  Bring-up path (setup_ipc):
+ *    multiproc → Ipc_init (with mailbox shutdown callback) → resource table →
+ *    wait for Linux virtio → VirtIO → RPMessage → chrdev endpoint announce.
+ *
+ *  Shutdown path (Linux 6.12 k3 remoteproc):
+ *    echo stop → kernel sends RP_MBOX_SHUTDOWN over the mailbox →
+ *    IpcRpMboxCallback sets gbShutdown → main loop exits →
+ *    finalize_ipc_shutdown() sends RP_MBOX_SHUTDOWN_ACK, disables IRQs, WFI.
+ *
+ *  Without the ACK + WFI, you get:
+ *    k3_r5_rproc_stop: timeout waiting for rproc completion event
+ *    can't stop rproc: -16
+ *    and remoteproc state stays "running" so firmware cannot be replaced.
  */
 
 /* ========================================================================== */
@@ -50,13 +64,16 @@
 
 #include <ti/osal/HwiP.h>
 #include <ti/osal/osal.h>
-/* SCI Client */
+/* SCI Client — must init at boot if we Sciclient_deinit() on shutdown */
 #include <ti/drv/sciclient/sciclient.h>
 
 #include <ti/drv/ipc/ipc.h>
+#include <ti/csl/arch/csl_arch.h>
+#include <ti/csl/arch/r5/interrupt.h>
 
-// #include <ti/drv/ipc/examples/common/src/ipc_rsctable.h> // We are using our own from setup.c
-#include "../include/setup.h" // For ipc rsctable
+/* We use our own resource table from setup.c, not TI's ipc_rsctable.h */
+// #include <ti/drv/ipc/examples/common/src/ipc_rsctable.h>
+#include "../include/setup.h" /* For ti_ipc_remoteproc_ResourceTable */
 
 #include "../../../SHARED_CODE/include/shared_rpmsg.h"
 
@@ -90,8 +107,19 @@
 #elif defined (SOC_J784S4) || defined (SOC_J742S2)
 #define VRING_BASE_ADDRESS      0xAC000000U
 #else
+/* J721E / BeagleBone AI-64 default */
 #define VRING_BASE_ADDRESS      0xAA000000U
 #endif
+
+/*
+ * Sentinel for "no shutdown remotecore recorded yet".
+ *
+ * IMPORTANT: IPC_MPU1_0 (Linux A72) is defined as 0 in the TI IPC headers.
+ * A common bug is to treat remoteCoreId == 0 as "unset" and skip SHUTDOWN_ACK
+ * when Linux is the requester — which is exactly the case for remoteproc stop.
+ * Never gate ACK on (remoteCoreId != 0). Use this sentinel + gbShutdown instead.
+ */
+#define SHUTDOWN_REMOTE_UNSET   (0xFFFFFFFFU)
 
 
 
@@ -166,13 +194,91 @@ uint32_t rpmsgDataSize = RPMSG_DATA_SIZE;
 
 volatile uint32_t gMessagesReceived = 0;
 
+/* Set by IpcRpMboxCallback when Linux (or another core) requests remoteproc stop. */
+volatile uint32_t gbShutdown = 0U;
+/* Core that sent RP_MBOX_SHUTDOWN — where we must send SHUTDOWN_ACK. */
+volatile uint32_t gbShutdownRemotecoreID = SHUTDOWN_REMOTE_UNSET;
+
+/*
+ * Cached chrdev RPMessage handle so the mailbox ISR callback can unblock any
+ * blocking recv without touching printf or doing heavy work in IRQ context.
+ */
+static RPMessage_Handle gChrdevHandle = NULL;
+
+/* Non-zero after a successful Sciclient_init(); gates Sciclient_deinit(). */
+static int gSciclientReady = 0;
+
 // #define DEBUG_PRINT
 
+/*
+ * Ipc_mailboxSend lives in ipc_mailbox.h / the IPC library. It is not declared
+ * in the public ipc.h, so TI's own examples (ipc_testsetup.c) use an extern.
+ * We need it to send RP_MBOX_SHUTDOWN_ACK back to Linux.
+ */
+extern int32_t Ipc_mailboxSend(uint32_t selfId, uint32_t remoteProcId, uint32_t val,
+                               uint32_t timeoutCnt);
 
+/*
+ * Sciclient talks to the Device Manager / SYSFW. On shutdown we call
+ * Sciclient_deinit() (matching TI's graceful-shutdown examples). If Sciclient
+ * was never initialized, that deinit can hang *before* we get to send
+ * SHUTDOWN_ACK — which looks exactly like the remoteproc -16 timeout.
+ * So init early, even if we barely use Sciclient during normal run.
+ */
+static void ipc_init_sciclient(void)
+{
+    Sciclient_ConfigPrms_t config;
+
+    /* Now reinitialize it as default parameter (same pattern as TI main_baremetal.c) */
+    Sciclient_configPrmsInit(&config);
+
+    if (Sciclient_init(&config) == CSL_PASS) {
+        gSciclientReady = 1;
+        printf("R5: Sciclient_init OK\n");
+    } else {
+        gSciclientReady = 0;
+        printf("R5: Sciclient_init failed (deinit on shutdown may hang)\n");
+    }
+}
+
+/*
+ * Mailbox / remoteproc control-message callback registered via
+ * initPrms.rpMboxMsgFxn.
+ *
+ * The IPC LLD invokes this from mailbox interrupt context when it sees a
+ * special RP_MBOX_* value (as opposed to a normal virtio kick).
+ *
+ * Rules for this callback:
+ *   - Set flags / wake waiters only. Do NOT printf here (IRQ context; can
+ *     re-enter or spam the UART while Linux is tearing the bus down).
+ *   - Do NOT send SHUTDOWN_ACK from here — that belongs on the main-thread
+ *     finalize path after best-effort cleanup, so we never skip ACK because
+ *     some HW deinit failed.
+ *
+ * On Linux 6.12, `echo stop` into remoteproc state causes the kernel to send
+ * IPC_RP_MBOX_SHUTDOWN and then wait for IPC_RP_MBOX_SHUTDOWN_ACK.
+ */
+static void IpcRpMboxCallback(uint32_t remoteCoreId, uint32_t msgVal)
+{
+    if (msgVal == IPC_RP_MBOX_SHUTDOWN) {
+        /*
+         * Do not gate on remoteCoreId != 0.
+         * Linux is IPC_MPU1_0 == 0; skipping ACK for that id is the silent bug
+         * that leaves remoteproc stuck in "running".
+         */
+        gbShutdown = 1U;
+        gbShutdownRemotecoreID = remoteCoreId;
+
+        /* Wake anything blocked in RPMessage_recv so the main loop can exit. */
+        if (gChrdevHandle != NULL) {
+            RPMessage_unblock(gChrdevHandle);
+        }
+    }
+}
 
 /*
  * This function is the callback function the ipc lld library calls when a
- * message is received.
+ * message is received (normal RPMSG / virtio path — not mailbox SHUTDOWN).
  */
 static void IpcTestBaremetalNewMsgCb(uint32_t srcEndPt, uint32_t procId)
 {
@@ -189,6 +295,7 @@ static void IpcTestPrint(const char *str)
 
     return;
 }
+
 uint32_t Ipc_exampleVirtToPhyFxn(const void *virtAddr)
 {
     return ((uint32_t)virtAddr);
@@ -199,10 +306,78 @@ void *Ipc_examplePhyToVirtFxn(uint32_t phyAddr)
     return ((void *)phyAddr);
 }
 
+/* Polled by main.c / example_rpmsg_talk.c so the app loop can exit cleanly. */
+int ipc_shutdown_requested(void)
+{
+    return (gbShutdown != 0U) ? 1 : 0;
+}
+
+/*
+ * Main-thread finalize after gbShutdown is set. Order matters:
+ *
+ *   1. Send SHUTDOWN_ACK to whoever requested stop (usually Linux MPU).
+ *   2. Sciclient_deinit (only if we inited).
+ *   3. Disable mailbox + VIM IRQs, then HwiP_disable.
+ *   4. WFI forever — Linux considers the core stopped once ACK is seen and
+ *      the core is idle in WFI.
+ *
+ * Never return early before ACK. This mirrors TI ipc_testsetup.c's shutdown
+ * finalize, adapted for baremetal, with ACK intentionally *before*
+ * Sciclient_deinit so a hung deinit cannot prevent the ACK.
+ *
+ * Does not return.
+ */
+void finalize_ipc_shutdown(void)
+{
+    uint32_t loopCnt;
+    int32_t ackStatus = IPC_EFAIL;
+
+    printf("R5: remoteproc shutdown finalize (remoteCoreId=%lu)\n",
+           (unsigned long)gbShutdownRemotecoreID);
+
+    if (gbShutdownRemotecoreID != SHUTDOWN_REMOTE_UNSET) {
+        /* ACK the suspend / stop message — this is what clears the -16 timeout. */
+        ackStatus = Ipc_mailboxSend(selfProcId, gbShutdownRemotecoreID,
+                                    IPC_RP_MBOX_SHUTDOWN_ACK, 1U);
+        printf("R5: SHUTDOWN_ACK status=%ld\n", (long)ackStatus);
+    } else {
+        printf("R5: SHUTDOWN_ACK skipped (no remotecore id)\n");
+    }
+
+    if (gSciclientReady) {
+        (void)Sciclient_deinit();
+        gSciclientReady = 0;
+    }
+
+    if (gbShutdownRemotecoreID != SHUTDOWN_REMOTE_UNSET) {
+        Ipc_mailboxDisableNewMsgInt((uint16_t)selfProcId,
+                                    (uint16_t)gbShutdownRemotecoreID);
+    }
+
+    /* Disable/Clear pending Interrupts in VIM (same idea as Reset_Handler bring-up). */
+    for (loopCnt = 0U; loopCnt < R5_VIM_INTR_NUM; loopCnt++) {
+        CSL_vimSetIntrEnable((CSL_vimRegs *)(uintptr_t)CSL_MAIN_DOMAIN_VIM_BASE_ADDR,
+                             loopCnt, false);
+        CSL_vimClrIntrPending((CSL_vimRegs *)(uintptr_t)CSL_MAIN_DOMAIN_VIM_BASE_ADDR,
+                              loopCnt);
+    }
+
+    (void)HwiP_disable();
+
+    /* For ARM R cores — park here until Linux resets / reloads the core. */
+    for (;;) {
+        __asm__ __volatile__("wfi" ::: "memory");
+    }
+}
+
 int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
 {
     /* Step1 : Initialize the multiproc */
     Ipc_InitPrms initPrms;
+
+    /* Required before any Sciclient_deinit() on the shutdown path. */
+    ipc_init_sciclient();
+
     if (IPC_SOK == Ipc_mpSetConfig(selfProcId, gNumRemoteProc, pRemoteProcArray))
     {
         printf("IPC_echo_test (core : %s) .....\r\n", Ipc_mpGetSelfName());
@@ -214,6 +389,11 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
         initPrms.virtToPhyFxn = &Ipc_exampleVirtToPhyFxn;
         initPrms.phyToVirtFxn = &Ipc_examplePhyToVirtFxn;
         initPrms.printFxn = &IpcTestPrint;
+        /*
+         * Without rpMboxMsgFxn, RP_MBOX_SHUTDOWN from Linux is ignored and
+         * remoteproc stop times out (-16) on kernel 6.12+.
+         */
+        initPrms.rpMboxMsgFxn = &IpcRpMboxCallback;
 
         if (IPC_SOK != Ipc_init(&initPrms))
         {
@@ -221,6 +401,7 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
         }
     }else{
         printf("NOT GOOD: %s:%d\r\n", __FILE__, __LINE__);
+        return -1;
     }
 #ifdef DEBUG_PRINT
     printf("Required Local memory for Virtio_Object = %ld\r\n",
@@ -235,6 +416,10 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
         while (!Ipc_isRemoteReady(pRemoteProcArray[t]))
         {
             // Task_sleep(100);
+            /* Allow remoteproc stop even if we are still waiting on Linux. */
+            if (ipc_shutdown_requested()) {
+                return -1;
+            }
         }
     }
     printf("Linux VDEV ready now .....\n");
@@ -294,6 +479,9 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
         return -1;
     }
 
+    /* Stash for IpcRpMboxCallback → RPMessage_unblock on SHUTDOWN. */
+    gChrdevHandle = *handle_chrdev;
+
     status = RPMessage_announce(RPMESSAGE_ALL, *myEndPt, SERVICE_CHRDEV);
     if (status != IPC_SOK)
     {
@@ -305,4 +493,3 @@ int32_t setup_ipc(RPMessage_Handle *handle_chrdev, uint32_t *myEndPt)
 
     return 0;
 }
-
