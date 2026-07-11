@@ -183,6 +183,10 @@ static REMOTE_RETURN send_blocking_request_r5(MESSAGE *request, int timeout_seco
         uint32_t srcEndPt = remoteEndPt;
         uint32_t srcProc = remoteProcId;
 
+        if (ipc_shutdown_requested()) {
+            return (REMOTE_RETURN){ .error = -1, .rt = NULL };
+        }
+
         status = RPMessage_recvNb(handle, &msg, &len, &srcEndPt, &srcProc);
         if (status == IPC_SOK && len == sizeof(msg)) {
             remoteEndPt = srcEndPt;
@@ -285,6 +289,7 @@ int example_rpmsg_peer_ready(void)
 
 int teardown_r5_example_talk(void)
 {
+    mark_linux_peer_stale("teardown", 0, remoteEndPt);
     return 0;
 }
 
@@ -292,7 +297,7 @@ int process_linux_messages(int max_messages)
 {
     int processed = 0;
 
-    if (handle == NULL) {
+    if (handle == NULL || ipc_shutdown_requested()) {
         return 0;
     }
 
@@ -301,7 +306,13 @@ int process_linux_messages(int max_messages)
         uint16_t len = sizeof(msg);
         uint32_t srcEndPt = remoteEndPt;
         uint32_t srcProc = remoteProcId;
-        int32_t status = RPMessage_recvNb(handle, &msg, &len, &srcEndPt, &srcProc);
+        int32_t status;
+
+        if (ipc_shutdown_requested()) {
+            return processed;
+        }
+
+        status = RPMessage_recvNb(handle, &msg, &len, &srcEndPt, &srcProc);
 
         if (status != IPC_SOK) {
             return processed;

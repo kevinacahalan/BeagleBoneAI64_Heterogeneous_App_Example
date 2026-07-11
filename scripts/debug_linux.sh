@@ -1,5 +1,8 @@
 #!/bin/bash
-# Start/stop the example app's Linux-side binary independently for debugging.
+# Start/stop the example Linux-side binary independently.
+# Does not stop R5 / remoteproc. When LINUX_AND_R5 is active, stop/restart
+# only the Linux process (or its pane) and leave the combined session up.
+#
 # Usage:
 #   sudo ./scripts/debug_linux.sh start
 #   sudo ./scripts/debug_linux.sh stop
@@ -15,6 +18,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 LINUX_BIN="$PROJECT_DIR/build/linux/LINUX_SIDE_aarch64"
 SESSION_NAME="EXAMPLE_LINUX"
 COMBINED_SESSION_NAME="LINUX_AND_R5"
+COMBINED_LINUX_PANE="${COMBINED_SESSION_NAME}:main.2"
 
 DEVICE_MODEL=$(cat /proc/device-tree/model | sed "s/ /_/g" | tr -d '\000')
 if [ "$DEVICE_MODEL" != "BeagleBoard.org_BeagleBone_AI-64" ]; then
@@ -25,22 +29,26 @@ fi
 print_help() {
     echo "Usage: $0 {start|stop|restart|status|attach|run}"
     echo ""
-    echo "Commands:"
-    echo "  start    Start the example Linux binary in a tmux session"
-    echo "  stop     Stop the example Linux binary"
+    echo "Commands (Linux only — R5 / remoteproc are left alone):"
+    echo "  start    Start the example Linux binary (standalone tmux, or combined pane)"
+    echo "  stop     Stop the example Linux binary (keeps LINUX_AND_R5 session if present)"
     echo "  restart  Stop then start the example Linux binary"
     echo "  status   Show whether the example Linux binary is running"
-    echo "  attach   Attach to the running tmux session (Ctrl+B, D to detach)"
+    echo "  attach   Attach to standalone EXAMPLE_LINUX or combined LINUX_AND_R5"
     echo "  run      Restart if running, otherwise start; then attach"
     echo ""
     exit 0
 }
 
-ensure_combined_session_not_running() {
-    if tmux has-session -t "$COMBINED_SESSION_NAME" 2>/dev/null; then
-        echo "Error: tmux session '$COMBINED_SESSION_NAME' is already running."
-        echo "Stop it before starting '$SESSION_NAME' so the standalone Linux session does not conflict with the combined debug session."
-        exit 1
+combined_session_active() {
+    tmux has-session -t "$COMBINED_SESSION_NAME" 2>/dev/null
+}
+
+kill_linux_process() {
+    if pgrep -f "LINUX_SIDE_aarch64" >/dev/null 2>&1; then
+        echo "  Killing LINUX_SIDE_aarch64 processes..."
+        sudo pkill -f "LINUX_SIDE_aarch64" || true
+        sleep 0.3
     fi
 }
 
@@ -52,12 +60,17 @@ do_stop() {
         tmux kill-session -t "$SESSION_NAME"
     fi
 
-    if pgrep -f "LINUX_SIDE_aarch64" >/dev/null 2>&1; then
-        echo "  Killing stray LINUX_SIDE_aarch64 processes..."
-        sudo pkill -f "LINUX_SIDE_aarch64" || true
-    fi
+    # Never kill LINUX_AND_R5 — only the Linux process inside it.
+    kill_linux_process
 
     echo "Example Linux application stopped."
+}
+
+start_in_combined_pane() {
+    echo "Starting Linux app in combined session pane ($COMBINED_LINUX_PANE)..."
+    kill_linux_process
+    tmux send-keys -t "$COMBINED_LINUX_PANE" "sudo \"$LINUX_BIN\"" C-m
+    echo "Example Linux application started in $COMBINED_SESSION_NAME."
 }
 
 do_start() {
@@ -67,7 +80,10 @@ do_start() {
         exit 1
     fi
 
-    ensure_combined_session_not_running
+    if combined_session_active; then
+        start_in_combined_pane
+        return
+    fi
 
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         echo "Example Linux app is already running in tmux session '$SESSION_NAME'."
@@ -88,16 +104,16 @@ do_start() {
 do_status() {
     echo "=== Example Linux Status ==="
 
-    if tmux has-session -t "$COMBINED_SESSION_NAME" 2>/dev/null; then
+    if combined_session_active; then
         echo "  Combined tmux session ($COMBINED_SESSION_NAME): ACTIVE"
     else
         echo "  Combined tmux session ($COMBINED_SESSION_NAME): none"
     fi
 
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo "  Tmux session ($SESSION_NAME): ACTIVE"
+        echo "  Standalone tmux session ($SESSION_NAME): ACTIVE"
     else
-        echo "  Tmux session ($SESSION_NAME): none"
+        echo "  Standalone tmux session ($SESSION_NAME): none"
     fi
 
     local pid
@@ -110,17 +126,21 @@ do_status() {
 }
 
 do_attach() {
-    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    if combined_session_active; then
+        tmux attach -t "$COMBINED_SESSION_NAME"
+    elif tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         tmux attach -t "$SESSION_NAME"
     else
-        echo "No tmux session '$SESSION_NAME' found. Start first with: $0 start"
+        echo "No tmux session found. Start with: $0 start  or  ./debug_run.sh"
         exit 1
     fi
 }
 
 do_run() {
-    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo "Example Linux app already running; restarting before attach..."
+    if pgrep -f "LINUX_SIDE_aarch64" >/dev/null 2>&1 || \
+       tmux has-session -t "$SESSION_NAME" 2>/dev/null || \
+       combined_session_active; then
+        echo "Example Linux app already present; restarting before attach..."
         do_stop
         do_start
     else

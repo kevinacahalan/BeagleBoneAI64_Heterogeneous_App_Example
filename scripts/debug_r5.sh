@@ -1,5 +1,7 @@
 #!/bin/bash
-# Start/stop the example app's R5 firmware independently for debugging.
+# Start/stop the example app's R5 firmware independently.
+# Does not touch the Linux RPMSG client or any tmux session.
+#
 # Usage:
 #   sudo ./scripts/debug_r5.sh start
 #   sudo ./scripts/debug_r5.sh stop
@@ -13,6 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 R5_ELF="$PROJECT_DIR/build/R5_0/r5f_r5f0_0.elf"
+STOP_TIMEOUT_SEC=15
 
 DEVICE_MODEL=$(cat /proc/device-tree/model | sed "s/ /_/g" | tr -d '\000')
 if [ "$DEVICE_MODEL" != "BeagleBoard.org_BeagleBone_AI-64" ]; then
@@ -25,7 +28,7 @@ J7_MAIN_R5F0_0_rproc_number="$($SCRIPT_DIR/get_remoteproc_number.sh j7-main-r5f0
 print_help() {
     echo "Usage: $0 {start|stop|restart|status|trace|run}"
     echo ""
-    echo "Commands:"
+    echo "Commands (R5 / remoteproc only — Linux and tmux are left alone):"
     echo "  start    Start the example R5 firmware"
     echo "  stop     Stop the example R5 firmware"
     echo "  restart  Stop then start the example R5 firmware"
@@ -40,6 +43,24 @@ get_r5_state() {
     cat /sys/class/remoteproc/remoteproc${J7_MAIN_R5F0_0_rproc_number}/state 2>/dev/null || echo "unknown"
 }
 
+wait_for_r5_offline() {
+    local state
+    local i
+
+    for i in $(seq 1 "$STOP_TIMEOUT_SEC"); do
+        state=$(get_r5_state)
+        if [ "$state" = "offline" ]; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    state=$(get_r5_state)
+    echo "Error: R5 did not reach offline within ${STOP_TIMEOUT_SEC}s (state: $state)."
+    echo "On Linux 6.12 the firmware must ACK RP_MBOX_SHUTDOWN and enter WFI."
+    return 1
+}
+
 do_stop() {
     local state
     state=$(get_r5_state)
@@ -49,8 +70,16 @@ do_stop() {
     fi
 
     echo "Stopping R5 firmware (remoteproc${J7_MAIN_R5F0_0_rproc_number})..."
-    echo stop | sudo tee /sys/class/remoteproc/remoteproc${J7_MAIN_R5F0_0_rproc_number}/state >/dev/null 2>&1 || true
-    echo "R5 firmware stopped."
+    if ! echo stop | sudo tee /sys/class/remoteproc/remoteproc${J7_MAIN_R5F0_0_rproc_number}/state >/dev/null; then
+        echo "Error: echo stop failed (see dmesg for k3_r5_rproc_stop / -16)."
+        exit 1
+    fi
+
+    if ! wait_for_r5_offline; then
+        exit 1
+    fi
+
+    echo "R5 firmware stopped (state: offline)."
 }
 
 do_start() {
@@ -68,6 +97,11 @@ do_start() {
     if [ "$state" = "running" ]; then
         echo "R5 firmware already running."
         return
+    fi
+
+    if [ "$state" != "offline" ]; then
+        echo "Error: R5 remoteproc state is '$state' (expected offline before start)."
+        exit 1
     fi
 
     echo "Copying R5 ELF to /lib/firmware/..."
