@@ -134,7 +134,9 @@ sudo chown -R "$(id -u):$(id -g)" ~/ti
 ```
 
 #### To build and copy to board:
-`[SCRIPT_DIR]/compile_and_push.sh --ip [BEAGLE_IP]`
+`[SCRIPT_DIR]/compile_and_push.sh --ssh [SSH_DEST]`
+
+`SSH_DEST` is an SSH host alias from `~/.ssh/config` (e.g. `bbai64`) or `user@host` (e.g. `kevinc@192.168.7.2`).
 
 #### To run:
 `sudo [SCRIPT_DIR]/debug_run.sh` (RUN FROM BOARD, NOT YOUR DEV MACHINE!)
