@@ -60,9 +60,6 @@ dkms.conf
 # Random
 build/*
 
-# Local TI SDK cache
-.ti-sdk/
-
 *.lst
 LINUX_SIDE/.vscode/settings.json
 LINUX_SIDE/.vscode/c_cpp_properties.json
