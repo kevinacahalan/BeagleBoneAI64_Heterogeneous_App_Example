@@ -1,6 +1,6 @@
 #!/bin/bash
 # This script builds for the BeagleBone and copies the files to the BeagleBone.
-# It requires the IP address of the BeagleBone to be provided as an argument.
+# It requires an SSH destination: host alias from ~/.ssh/config, or user@host.
 
 # Check if the script is being run with sudo (as root)
 if [ "$EUID" -eq 0 ]; then
@@ -13,14 +13,16 @@ SCRIPT_DIR=$(dirname "$0")
 BUILD_SCRIPT="$SCRIPT_DIR/build.sh --both"
 RSYNC_SOURCE_DIR="$SCRIPT_DIR/../"
 RSYNC_DEST_DIR="~/BeagleBoneAI64_Heterogeneous_App_Example/"
-BEAGLEBONE_IP=""  # No default IP address
+SSH_DEST=""  # SSH host alias or user@host
 
 # Function to print the help message
 print_help() {
-    echo "Usage: $0 --ip <BeagleBone IP> [OPTIONS]"
+    echo "Usage: $0 --ssh <destination> [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  --ip              Specify the IP address of the BeagleBone. This option is required."
+    echo "  --ssh             SSH destination for rsync (required)."
+    echo "                    Examples: bbai64  or  kevinc@192.168.7.2"
+    echo "                    Host aliases use settings from ~/.ssh/config."
     echo "  help              Display this help message."
     echo ""
     exit 0
@@ -29,8 +31,8 @@ print_help() {
 # Parse command-line options
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --ip)
-            BEAGLEBONE_IP="$2"
+        --ssh)
+            SSH_DEST="$2"
             shift 2
             ;;
         help)
@@ -43,11 +45,13 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Check if IP address is provided
-if [ -z "$BEAGLEBONE_IP" ]; then
-    echo "Error: No IP address provided. Use --ip <BeagleBone IP>."
+# Check if SSH destination is provided
+if [ -z "$SSH_DEST" ]; then
+    echo "Error: No SSH destination provided. Use --ssh <host alias or user@host>."
     exit 1
 fi
+
+RSYNC_REMOTE="${SSH_DEST}:${RSYNC_DEST_DIR}"
 
 # Run the build script
 echo "Running build script for BeagleBone..."
@@ -58,8 +62,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Rsync the files over to the BeagleBone
-echo "Build successful. Copying files to BeagleBone..."
-rsync -av --exclude=".*" "$RSYNC_SOURCE_DIR" "debian@$BEAGLEBONE_IP:$RSYNC_DEST_DIR"
+echo "Build successful. Copying files to BeagleBone (${RSYNC_REMOTE})..."
+rsync -av --exclude=".*" "$RSYNC_SOURCE_DIR" "$RSYNC_REMOTE"
 if [ $? -ne 0 ]; then
     echo "File copy failed. Exiting."
     exit 1
