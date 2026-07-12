@@ -217,7 +217,7 @@ if [ "$COMPILE" = true ]; then
         exit 1
     fi
     print_info "Building BeagleBone outputs before launch"
-    sudo -u "$ORIGINAL_USER" bash "$SCRIPT_DIR/build.sh" --both
+    sudo -u "$ORIGINAL_USER" bash "$SCRIPT_DIR/build.sh" --all
 fi
 
 print_info "Using kernel 6 workflow"

@@ -89,7 +89,8 @@
             /* UART4_RX J721E_IOPAD(0xe8, PIN_INPUT, 7) */ /* P9_37b (AG28) PRG0_PRU0_GPO14.GPIO0_57 */
             /* UART4_TX J721E_IOPAD(0xec, PIN_INPUT, 7) */ /* P9_38b (AG27) PRG0_PRU0_GPO15.GPIO0_58 */
             J721E_IOPAD(0xf0, PIN_INPUT, 7) /* P8_12 (AH28) PRG0_PRU0_GPO16.GPIO0_59 */
-            J721E_IOPAD(0xf4, PIN_INPUT, 7) /* P8_11 (AB24) PRG0_PRU0_GPO17.GPIO0_60 */
+            /* PRU0_0 LED: P8_11 remuxed to PRG0_PRU0_GPO17 mode 0 below */
+            /* J721E_IOPAD(0xf4, PIN_INPUT, 7) */ /* P8_11 (AB24) PRG0_PRU0_GPO17.GPIO0_60 */
             J721E_IOPAD(0xf8, PIN_INPUT, 7) /* P8_15 (AB29) PRG0_PRU0_GPO18.GPIO0_61 */
             J721E_IOPAD(0xfc, PIN_INPUT, 7) /* P8_16 (AB28) PRG0_PRU0_GPO19.GPIO0_62 */
             J721E_IOPAD(0x100, PIN_INPUT, 7) /* P8_31b (AE29) PRG0_PRU1_GPO0.GPIO0_63 */
@@ -411,4 +412,53 @@
 	memory-region = <&main_r5fss0_core0_dma_memory_region>,
 			<&main_r5fss0_core0_memory_region>,
             <&shared_memory_r5f_linux>;
+};
+
+/*
+ * PRU0_0 (ICSSG0 PRU0 / j7-pru0_0): P8_11 as PRG0_PRU0_GPO17.
+ * SysConfig GPO encoding uses PIN_INPUT + mode 0 (not PIN_OUTPUT).
+ * Mode 1 would be GPI. Do not enable GPO3/6/14/15 without resolving
+ * EQEP / board 3v3-en / UART4 conflicts.
+ */
+&main_pmx0 {
+	pru0_0_pins_default: pru0-0-default-pins {
+		pinctrl-single,pins = <
+			J721E_IOPAD(0xf4, PIN_INPUT, 0) /* (AB24) P8_11 PRG0_PRU0_GPO17 */
+			/* Future PRG0_PRU0 GPOs (SysConfig mode 0 = GPO, mode 1 = GPI):
+			 * J721E_IOPAD(0xb0, PIN_INPUT, 0) // GPO0  P9_28b
+			 * J721E_IOPAD(0xb4, PIN_INPUT, 0) // GPO1  P9_30b
+			 * J721E_IOPAD(0xb8, PIN_INPUT, 0) // GPO2  P9_12
+			 * J721E_IOPAD(0xbc, PIN_INPUT, 0) // GPO3  P9_27a — EQEP conflict
+			 * J721E_IOPAD(0xc0, PIN_INPUT, 0) // GPO4  P9_15
+			 * J721E_IOPAD(0xc4, PIN_INPUT, 0) // GPO5  P8_04
+			 * J721E_IOPAD(0xc8, PIN_INPUT, 0) // GPO6  AE26 — board 3v3-en, avoid
+			 * J721E_IOPAD(0xcc, PIN_INPUT, 0) // GPO7  P9_33b
+			 * J721E_IOPAD(0xd0, PIN_INPUT, 0) // GPO8  P8_26
+			 * J721E_IOPAD(0xd4, PIN_INPUT, 0) // GPO9  P9_31b
+			 * J721E_IOPAD(0xd8, PIN_INPUT, 0) // GPO10 P9_29b
+			 * J721E_IOPAD(0xdc, PIN_INPUT, 0) // GPO11 P9_39b
+			 * J721E_IOPAD(0xe0, PIN_INPUT, 0) // GPO12 P9_35b
+			 * J721E_IOPAD(0xe4, PIN_INPUT, 0) // GPO13 P9_36b
+			 * J721E_IOPAD(0xe8, PIN_INPUT, 0) // GPO14 P9_37b — UART4 conflict
+			 * J721E_IOPAD(0xec, PIN_INPUT, 0) // GPO15 P9_38b — UART4 conflict
+			 * J721E_IOPAD(0xf0, PIN_INPUT, 0) // GPO16 P8_12
+			 * J721E_IOPAD(0xf8, PIN_INPUT, 0) // GPO18 P8_15
+			 * J721E_IOPAD(0xfc, PIN_INPUT, 0) // GPO19 P8_16
+			 */
+		>;
+	};
+};
+
+/*
+ * Kernel 6.12 j721e DT omits PRU vring IRQs (unlike AM65). Without these,
+ * pru_rproc fails boot with: error -ENXIO: IRQ vring not found.
+ * Cells: <sysevt channel host> — match TO_ARM_HOST=16 in rpmsg_led firmware.
+ * See am65 / am62: interrupts = <16 2 2>; interrupt-names = "vring";
+ */
+&pru0_0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pru0_0_pins_default>;
+	interrupt-parent = <&icssg0_intc>;
+	interrupts = <16 2 2>;
+	interrupt-names = "vring";
 };

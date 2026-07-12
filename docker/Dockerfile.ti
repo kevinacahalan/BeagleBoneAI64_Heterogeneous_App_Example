@@ -1,10 +1,12 @@
 FROM ghcr.io/texasinstruments/ubuntu-distro:latest
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG PRU_CGT_VER=2.3.3
+ARG PRU_CGT_URL=https://software-dl.ti.com/codegen/esd/cgt_public_sw/PRU/${PRU_CGT_VER}/ti_cgt_pru_${PRU_CGT_VER}_linux_installer_x86.bin
 
 USER root
 
-# R5 firmware and PDK library builds only (Linux builds use Dockerfile.debian13).
+# R5 firmware, PDK library builds, and PRU firmware (clpru / lnkpru).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bash \
@@ -13,11 +15,26 @@ RUN apt-get update \
         git \
         ca-certificates \
         wget \
+        curl \
+        lib32z1 \
         gcc-arm-none-eabi \
         binutils-arm-none-eabi \
         libnewlib-arm-none-eabi \
         libtinfo5 \
     && rm -rf /var/lib/apt/lists/*
+
+# TI PRU Code Generation Tools (same major.minor as BeagleBoard ti-pru-cgt-v2.3).
+# Installer is a 32-bit binary; lib32z1 is required to run it on amd64.
+RUN curl -fsSL -o /tmp/ti_cgt_pru_installer.bin "${PRU_CGT_URL}" \
+    && chmod +x /tmp/ti_cgt_pru_installer.bin \
+    && /tmp/ti_cgt_pru_installer.bin --mode unattended --prefix /usr/share/ti \
+    && ln -sfn "/usr/share/ti/ti-cgt-pru_${PRU_CGT_VER}" /usr/share/ti/cgt-pru \
+    && for f in /usr/share/ti/cgt-pru/bin/*; do ln -sfn "$f" "/usr/bin/$(basename "$f")"; done \
+    && rm -f /tmp/ti_cgt_pru_installer.bin \
+    && test -x /usr/share/ti/cgt-pru/bin/clpru \
+    && test -x /usr/share/ti/cgt-pru/bin/lnkpru
+
+ENV PRU_CGT=/usr/share/ti/cgt-pru
 
 RUN mkdir -p /home/builder && chmod 1777 /home/builder
 WORKDIR /workspace
