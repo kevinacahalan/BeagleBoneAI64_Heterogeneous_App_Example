@@ -118,7 +118,7 @@ PSSP is cloned to `~/ti/pru-software-support-package/` (next to the SDK) and `li
 ```
 
 PRU firmware outputs: `build/PRU0_0/pru0_0-hello.out`, `build/PRU0_0/pru0_0-rpmsg-led.out`.
-On the board: `sudo ./scripts/debug_pru0_0.sh start hello` (or `rpmsg_led`). See [`PRU0_0_SIDE/README.md`](PRU0_0_SIDE/README.md).
+On the board: `sudo ./scripts/debug_pru0_0.sh start hello` (or `rpmsg_led`), then for the LED demo `sudo python3 PRU0_0_SIDE/host/blink_count.py 5`. See [`PRU0_0_SIDE/README.md`](PRU0_0_SIDE/README.md).
 
 `BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile for most drivers:
 - `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5, links PDK **debug** `.aer5f` libs where available
