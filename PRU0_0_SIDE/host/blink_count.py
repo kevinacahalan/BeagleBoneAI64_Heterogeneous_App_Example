@@ -168,7 +168,16 @@ def main() -> int:
 
     print(f"Using {device}", file=sys.stderr)
     msg = f"{args.count}\n".encode("ascii")
-    fd = os.open(device, os.O_RDWR | os.O_NONBLOCK)
+    try:
+        fd = os.open(device, os.O_RDWR | os.O_NONBLOCK)
+    except PermissionError:
+        print(
+            f"Permission denied opening {device}.\n"
+            "Re-run with sudo, for example:\n"
+            f"  sudo python3 PRU0_0_SIDE/host/blink_count.py {args.count}",
+            file=sys.stderr,
+        )
+        return 1
     try:
         os.write(fd, msg)
         deadline = time.monotonic() + args.timeout

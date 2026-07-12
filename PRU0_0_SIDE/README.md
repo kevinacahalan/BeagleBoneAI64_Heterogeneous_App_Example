@@ -48,8 +48,10 @@ sudo ./scripts/debug_pru0_0.sh start hello
 sudo ./scripts/debug_pru0_0.sh trace
 
 sudo ./scripts/debug_pru0_0.sh start rpmsg_led
-python3 PRU0_0_SIDE/host/blink_count.py 5
+sudo python3 PRU0_0_SIDE/host/blink_count.py 5
 ```
+
+`/dev/rpmsgN` is root-owned (`0600`); use `sudo` for the host script (or open the device as root).
 
 Always resolve the remoteproc instance by name (`j7-pru0_0`). On kernel 6.12
 it is often `remoteproc8`, which differs from older 5.10 tutorial numbering.
