@@ -96,7 +96,7 @@ After extract, the SDK lives at:
 PDK libraries used by this project (`.aer5f` extension), under both `debug` and `release` profiles:
 `~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*/packages/ti/[LIBRARY]/lib/j721e/...`
 
-PSSP is cloned to `third_party/pru-software-support-package/` and `lib/rpmsg_lib.lib` is built there.
+PSSP is cloned to `~/ti/pru-software-support-package/` (next to the SDK) and `lib/rpmsg_lib.lib` is built there.
 
 #### Build commands
 

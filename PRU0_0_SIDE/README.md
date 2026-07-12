@@ -18,14 +18,15 @@ The resource table section size must be a **multiple of 16 bytes** (padding afte
 Uses the same TI image as R5 (`docker/Dockerfile.ti` with `clpru`):
 
 ```bash
-# Once: fetch/build TI SDK+PDK and PSSP
+# Once: fetch/build TI SDK+PDK and PSSP under ~/ti
 ./scripts/build.sh --setup
 
 # Then build PRU0_0 firmware only
 ./scripts/build.sh --pru
 ```
 
-`--pru` does not fetch PSSP (same as `--r5` does not fetch the SDK). Outputs land in `build/PRU0_0/`.
+`--pru` does not fetch PSSP (same as `--r5` does not fetch the SDK). PSSP lives at
+`~/ti/pru-software-support-package/`. Outputs land in `build/PRU0_0/`.
 
 ## Pinmux
 

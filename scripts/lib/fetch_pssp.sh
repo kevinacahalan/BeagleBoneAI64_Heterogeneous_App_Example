@@ -2,10 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=sdk_config.sh
+source "${SCRIPT_DIR}/sdk_config.sh"
 # shellcheck source=pssp_config.sh
 source "${SCRIPT_DIR}/pssp_config.sh"
 
+TI_SDK_DIR="${TI_SDK_DIR_DEFAULT}"
 FORCE="false"
 SHOW_HELP="false"
 
@@ -13,14 +15,15 @@ print_help() {
     cat <<EOF
 Usage: ./scripts/lib/fetch_pssp.sh [options]
 
-Clone the TI PRU Software Support Package into ${PSSP_DIR_REL} at a pinned commit.
+Clone the TI PRU Software Support Package into \$TI_SDK_DIR/${PSSP_DIR_NAME}
+at a pinned commit (same TI install dir as the Processor SDK).
 
 Prefer: ./scripts/build.sh --setup (or --fetch-pssp).
 
 Options:
-    --force     Remove existing tree and re-clone
-    --repo-root <path>   Repository root (default: auto-detected)
-    -h, --help  Show this help
+    --force               Remove existing tree and re-clone
+    --ti-sdk-dir <path>   TI install directory (default: \$HOME/ti)
+    -h, --help            Show this help
 
 Pinned:
     ${PSSP_REPO_URL}
@@ -34,12 +37,12 @@ while [[ $# -gt 0 ]]; do
             FORCE="true"
             shift
             ;;
-        --repo-root)
+        --ti-sdk-dir)
             if [[ $# -lt 2 ]]; then
-                echo "Error: --repo-root requires a value" >&2
+                echo "Error: --ti-sdk-dir requires a value" >&2
                 exit 1
             fi
-            REPO_ROOT="$2"
+            TI_SDK_DIR="$2"
             shift 2
             ;;
         -h|--help)
@@ -59,13 +62,14 @@ if [[ "${SHOW_HELP}" == "true" ]]; then
     exit 0
 fi
 
-PSSP_DIR="$(pssp_resolve_dir "${REPO_ROOT}")"
+PSSP_DIR="$(pssp_resolve_dir "${TI_SDK_DIR}")"
 PARENT="$(dirname "${PSSP_DIR}")"
 
 mkdir -p "${PARENT}"
 
 if [[ ! -w "${PARENT}" ]]; then
     echo "Error: not writable: ${PARENT}" >&2
+    echo "Fix with: sudo chown -R \"\$(id -u):\$(id -g)\" \"${PARENT}\"" >&2
     exit 1
 fi
 
@@ -75,9 +79,8 @@ if [[ "${FORCE}" != "true" ]] && pssp_commit_ok "${PSSP_DIR}" && pssp_headers_ok
 fi
 
 if [[ -e "${PSSP_DIR}" ]]; then
-    if [[ ! -w "${PSSP_DIR}" ]] || [[ ! -w "$(dirname "${PSSP_DIR}")" ]]; then
+    if [[ ! -w "${PSSP_DIR}" ]] || [[ ! -w "${PARENT}" ]]; then
         echo "Error: cannot replace ${PSSP_DIR} (permission denied)." >&2
-        echo "A prior container run likely created it as root/nobody." >&2
         echo "Fix once: sudo chown -R \"\$(id -u):\$(id -g)\" \"${PSSP_DIR}\"" >&2
         echo "Then re-run, or: sudo rm -rf \"${PSSP_DIR}\"" >&2
         exit 1
