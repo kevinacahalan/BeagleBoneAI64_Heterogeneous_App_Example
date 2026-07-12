@@ -96,7 +96,7 @@ Dependency setup (TI container; same idea for R5 and PRU):
     --setup                Fetch/build TI SDK+PDK and PSSP+rpmsg_lib.
     --fetch-sdk            Download/extract TI SDK ${TI_SDK_VERSION}.
     --build-pdk            Build PDK debug and release libraries.
-    --fetch-pssp           Clone PSSP into ${PSSP_DIR_REL} (pinned commit).
+    --fetch-pssp           Clone PSSP into \$TI_SDK_DIR/${PSSP_DIR_NAME} (pinned commit).
     --build-pssp           Build PSSP lib/rpmsg_lib.lib with clpru.
     --ti-sdk-dir <path>    Host path for TI SDK. Default: \$HOME/ti
 
@@ -396,7 +396,7 @@ check_r5_pdk_libs() {
 
 check_pssp_ready() {
     local pssp_dir
-    pssp_dir="$(pssp_resolve_dir "${REPO_ROOT}")"
+    pssp_dir="$(pssp_resolve_dir "${TI_SDK_DIR}")"
 
     if ! pssp_headers_ok "${pssp_dir}"; then
         print_error "PSSP headers not found under ${pssp_dir}"
@@ -413,7 +413,6 @@ check_pssp_ready() {
 # Fetch/build TI SDK, PDK, and/or PSSP in one TI-container invocation.
 run_ti_dep_setup() {
     local -a cmd_parts=()
-    local need_sdk_mount="false"
     local joined=""
 
     if [[ "${FETCH_SDK}" != "true" && "${BUILD_PDK}" != "true" \
@@ -423,10 +422,7 @@ run_ti_dep_setup() {
 
     build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
 
-    if [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" ]]; then
-        need_sdk_mount="true"
-    fi
-
+    # SDK, PDK, and PSSP all live under the mounted TI install dir (~/ti).
     print_header "TI dependency setup"
     if [[ "${FETCH_SDK}" == "true" ]]; then
         print_info "Fetch TI SDK ${TI_SDK_VERSION}"
@@ -438,15 +434,15 @@ run_ti_dep_setup() {
     fi
     if [[ "${FETCH_PSSP}" == "true" ]]; then
         print_info "Fetch PSSP (${PSSP_COMMIT})"
-        cmd_parts+=("/workspace/scripts/lib/fetch_pssp.sh --repo-root /workspace")
+        cmd_parts+=("/workspace/scripts/lib/fetch_pssp.sh --ti-sdk-dir /home/builder/ti")
     fi
     if [[ "${BUILD_PSSP}" == "true" ]]; then
         print_info "Build PSSP rpmsg_lib"
-        cmd_parts+=("/workspace/scripts/lib/build_pssp_lib.sh --repo-root /workspace")
+        cmd_parts+=("/workspace/scripts/lib/build_pssp_lib.sh --ti-sdk-dir /home/builder/ti")
     fi
 
     joined="$(join_commands "${cmd_parts[@]}")"
-    run_container "${TI_IMAGE}" "${need_sdk_mount}" "${joined}"
+    run_container "${TI_IMAGE}" true "${joined}"
 }
 
 run_linux_build() {
@@ -490,6 +486,7 @@ run_pru_firmware() {
 
     if [[ "${CLEAN_ONLY}" == "true" ]]; then
         print_header "Cleaning PRU0_0 build artifacts"
+        # No TI mount needed for clean.
         run_container "${TI_IMAGE}" false "make -C /workspace/PRU0_0_SIDE clean"
         return 0
     fi
@@ -500,9 +497,10 @@ run_pru_firmware() {
     fi
 
     print_header "PRU0_0 firmware build"
-    print_info "TI container (clpru / lnkpru)"
-    run_container "${TI_IMAGE}" false \
-        "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/PRU0_0_SIDE all"
+    print_info "TI container (clpru / lnkpru); PSSP from /home/builder/ti/${PSSP_DIR_NAME}"
+    # Mount ~/ti so Makefile can use PSSP under /home/builder/ti/...
+    run_container "${TI_IMAGE}" true \
+        "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/PRU0_0_SIDE all PSSP=/home/builder/ti/${PSSP_DIR_NAME}"
 }
 
 case "${TARGET}" in
@@ -543,7 +541,7 @@ if [[ "${CLEAN_ONLY}" == "true" ]]; then
 elif [[ "${TARGET}" == "setup" || "${SETUP_ONLY}" == "true" ]]; then
     print_success "Dependency setup completed (TI SDK/PDK + PSSP)."
     print_info "SDK/PDK: ${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
-    print_info "PSSP:    ${REPO_ROOT}/${PSSP_DIR_REL}"
+    print_info "PSSP:    ${TI_SDK_DIR}/${PSSP_DIR_NAME}"
     print_info "Next: ./scripts/build.sh --r5 | --pru | --linux | --all"
 elif [[ "${TARGET}" == "linux" ]]; then
     print_success "Linux build completed. Artifacts are under ./build (and LINUX_SIDE/build)."

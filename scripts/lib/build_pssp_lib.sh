@@ -2,10 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+# shellcheck source=sdk_config.sh
+source "${SCRIPT_DIR}/sdk_config.sh"
 # shellcheck source=pssp_config.sh
 source "${SCRIPT_DIR}/pssp_config.sh"
 
+TI_SDK_DIR="${TI_SDK_DIR_DEFAULT}"
 FORCE="false"
 SHOW_HELP="false"
 
@@ -18,9 +20,9 @@ Build PSSP rpmsg_lib.lib with clpru (runs inside the TI container).
 Prefer: ./scripts/build.sh --setup (or --build-pssp).
 
 Options:
-    --force     Rebuild even if lib/rpmsg_lib.lib already exists
-    --repo-root <path>   Repository root (default: auto-detected)
-    -h, --help  Show this help
+    --force               Rebuild even if lib/rpmsg_lib.lib already exists
+    --ti-sdk-dir <path>   TI install directory (default: \$HOME/ti)
+    -h, --help            Show this help
 
 Requires:
     PRU_CGT pointing at TI PRU CGT (Dockerfile.ti sets /usr/share/ti/cgt-pru)
@@ -34,12 +36,12 @@ while [[ $# -gt 0 ]]; do
             FORCE="true"
             shift
             ;;
-        --repo-root)
+        --ti-sdk-dir)
             if [[ $# -lt 2 ]]; then
-                echo "Error: --repo-root requires a value" >&2
+                echo "Error: --ti-sdk-dir requires a value" >&2
                 exit 1
             fi
-            REPO_ROOT="$2"
+            TI_SDK_DIR="$2"
             shift 2
             ;;
         -h|--help)
@@ -59,14 +61,14 @@ if [[ "${SHOW_HELP}" == "true" ]]; then
     exit 0
 fi
 
-PSSP_DIR="$(pssp_resolve_dir "${REPO_ROOT}")"
+PSSP_DIR="$(pssp_resolve_dir "${TI_SDK_DIR}")"
 SRC_DIR="${PSSP_DIR}/lib/src/rpmsg_lib"
 OUT_LIB="${PSSP_DIR}/lib/rpmsg_lib.lib"
 BUILT_LIB="${SRC_DIR}/gen/rpmsg_lib.lib"
 
 if [[ ! -d "${PSSP_DIR}" ]] || ! pssp_headers_ok "${PSSP_DIR}"; then
     echo "Error: PSSP not found or incomplete at ${PSSP_DIR}" >&2
-    echo "Run: ./scripts/lib/fetch_pssp.sh" >&2
+    echo "Run: ./scripts/lib/fetch_pssp.sh --ti-sdk-dir ${TI_SDK_DIR}" >&2
     exit 1
 fi
 

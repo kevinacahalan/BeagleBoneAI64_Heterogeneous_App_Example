@@ -1,18 +1,21 @@
 # PRU0_0_SIDE — ICSSG0 PRU0 (j7-pru0_0) firmware
 #
 # Build inside the TI container via:
-#   ./scripts/build.sh --setup   # once: SDK/PDK + PSSP
+#   ./scripts/build.sh --setup   # once: SDK/PDK + PSSP under ~/ti
 #   ./scripts/build.sh --pru     # PRU0_0 firmware only
 #
 # Requires PRU_CGT (Dockerfile.ti → /usr/share/ti/cgt-pru) and PSSP under
-# third_party/pru-software-support-package (from --setup).
+# $HOME/ti/pru-software-support-package (from --setup; mounted at
+# /home/builder/ti in the container).
 
 ifndef PRU_CGT
   PRU_CGT := /usr/share/ti/cgt-pru
 endif
 
+# PSSP lives next to the Processor SDK (not in the git tree).
+PSSP ?= /home/builder/ti/pru-software-support-package
+
 REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
-PSSP := $(REPO_ROOT)/third_party/pru-software-support-package
 OUT_DIR := $(REPO_ROOT)/build/PRU0_0
 GEN_DIR := $(OUT_DIR)/obj
 
