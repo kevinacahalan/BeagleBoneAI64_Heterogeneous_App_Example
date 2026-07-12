@@ -12,6 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck source=lib/sdk_config.sh
 source "${SCRIPT_DIR}/lib/sdk_config.sh"
+# shellcheck source=lib/pssp_config.sh
+source "${SCRIPT_DIR}/lib/pssp_config.sh"
 
 DEBIAN_IMAGE="${DEBIAN_IMAGE_NAME}"
 TI_IMAGE="${TI_IMAGE_NAME}"
@@ -25,6 +27,8 @@ TI_SDK_DIR="${TI_SDK_DIR_DEFAULT}"
 SKIP_IMAGE_BUILD="false"
 FETCH_SDK="false"
 BUILD_PDK="false"
+FETCH_PSSP="false"
+BUILD_PSSP="false"
 SETUP_ONLY="false"
 CONTAINER_ENGINE=""
 MOUNT_SUFFIX=""
@@ -62,42 +66,58 @@ validate_not_root() {
     return 0
 }
 
+want_ti_setup() {
+    [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" \
+        || "${FETCH_PSSP}" == "true" || "${BUILD_PSSP}" == "true" ]]
+}
+
 print_help() {
     cat <<EOF
 Usage: ./scripts/build.sh [options]
 
 Build inside containers (Podman or Docker):
   - Debian 13 image: Linux aarch64 cross-build (gpiod v2)
-  - TI ubuntu-distro image: R5 firmware, SDK fetch, PDK libs
+  - TI ubuntu-distro image: R5 firmware, PRU firmware, SDK/PDK, PSSP
 
 Run with no arguments to show this help.
 
-Options:
-    --linux                Build only the Linux side for BeagleBone (aarch64).
-    --r5                   Build only the R5 firmware.
-    --both                 Build both targets.
+Firmware targets:
+    --linux                Build only the Linux side (aarch64).
+    --r5                   Build only the R5 firmware (requires --setup first).
+    --pru                  Build only PRU0_0 firmware (requires --setup first).
+    --all                  Build Linux + R5 + PRU (requires --setup first).
+
+Build mode:
     --debug                Debug build (default): app flags + PDK debug libs.
     --release              Release build: app flags + PDK release libs.
-    --clean                Clean Linux and R5 build artifacts and exit.
-    --fetch-sdk            Download/extract TI SDK ${TI_SDK_VERSION} (TI container).
-    --build-pdk            Build PDK debug and release libraries (TI container).
-    --setup                Shorthand for --fetch-sdk --build-pdk (TI container only).
+    --clean                Clean build artifacts for the selected target(s) and exit.
+
+Dependency setup (TI container; same idea for R5 and PRU):
+    --setup                Fetch/build TI SDK+PDK and PSSP+rpmsg_lib.
+    --fetch-sdk            Download/extract TI SDK ${TI_SDK_VERSION}.
+    --build-pdk            Build PDK debug and release libraries.
+    --fetch-pssp           Clone PSSP into ${PSSP_DIR_REL} (pinned commit).
+    --build-pssp           Build PSSP lib/rpmsg_lib.lib with clpru.
     --ti-sdk-dir <path>    Host path for TI SDK. Default: \$HOME/ti
+
+Other:
     --skip-image-build     Reuse existing images; skip docker/podman build.
     -h, --help             Show this help.
 
 Notes:
-    - BUILD_MODE selects compiler flags and matching PDK library profile for R5.
-    - --setup builds both PDK debug and release profiles.
-    - First-time setup: ./scripts/build.sh --setup
+    - First-time: ./scripts/build.sh --setup
+    - Then:       ./scripts/build.sh --r5 / --pru / --linux / --all
+    - Firmware targets only compile project code; they do not fetch deps.
+    - You may combine setup flags with a firmware target, e.g. --r5 --setup.
     - SDK ${TI_SDK_VERSION} is mounted at /home/builder/ti in the TI container.
 
 Examples:
     ./scripts/build.sh --setup
-    ./scripts/build.sh --both
+    ./scripts/build.sh --all
     ./scripts/build.sh --linux --release
     ./scripts/build.sh --r5 --ti-sdk-dir "\$HOME/ti"
-    ./scripts/build.sh --clean --both
+    ./scripts/build.sh --pru
+    ./scripts/build.sh --clean --all
 EOF
 }
 
@@ -115,9 +135,22 @@ while [[ $# -gt 0 ]]; do
             ACTION_REQUESTED="true"
             shift
             ;;
+        --pru)
+            TARGET="pru"
+            EXPLICIT_TARGET="pru"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
+        --all)
+            TARGET="all"
+            EXPLICIT_TARGET="all"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
         --both)
-            TARGET="both"
-            EXPLICIT_TARGET="both"
+            print_warning "--both is deprecated; use --all (Linux + R5 + PRU)."
+            TARGET="all"
+            EXPLICIT_TARGET="all"
             ACTION_REQUESTED="true"
             shift
             ;;
@@ -146,9 +179,21 @@ while [[ $# -gt 0 ]]; do
             ACTION_REQUESTED="true"
             shift
             ;;
+        --fetch-pssp)
+            FETCH_PSSP="true"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
+        --build-pssp)
+            BUILD_PSSP="true"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
         --setup)
             FETCH_SDK="true"
             BUILD_PDK="true"
+            FETCH_PSSP="true"
+            BUILD_PSSP="true"
             SETUP_ONLY="true"
             ACTION_REQUESTED="true"
             shift
@@ -183,7 +228,7 @@ if [[ "${ACTION_REQUESTED}" != "true" ]]; then
     print_header "BeagleBone AI64 build"
     print_info "Project: ${REPO_ROOT}"
     print_info "All builds run inside Podman/Docker."
-    print_info "First-time R5 setup: ./scripts/build.sh --setup"
+    print_info "First-time setup: ./scripts/build.sh --setup"
     echo
     print_help
     exit 0
@@ -196,53 +241,51 @@ if [[ "${BUILD_MODE}" != "debug" && "${BUILD_MODE}" != "release" ]]; then
     exit 1
 fi
 
-# Setup / fetch / build-pdk are TI-container work. Alone they do not build firmware.
-# Explicit --r5 may combine fetch/build-pdk with a firmware build.
-if [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" || "${SETUP_ONLY}" == "true" ]]; then
+# Setup flags alone (no firmware target) → dependency setup only.
+# Setup flags + --r5/--pru/--all → setup then that firmware target.
+if want_ti_setup || [[ "${SETUP_ONLY}" == "true" ]]; then
     if [[ "${EXPLICIT_TARGET}" == "linux" ]]; then
-        print_error "--fetch-sdk, --build-pdk, and --setup are TI/R5 operations and cannot be combined with --linux."
-        exit 1
-    fi
-    if [[ "${EXPLICIT_TARGET}" == "both" ]]; then
-        print_error "--fetch-sdk, --build-pdk, and --setup cannot be combined with --both. Run --setup first, then --both."
+        print_error "Dependency setup flags cannot be combined with --linux."
         exit 1
     fi
     if [[ "${EXPLICIT_TARGET}" == "" ]]; then
-        TARGET="r5"
         SETUP_ONLY="true"
-    elif [[ "${EXPLICIT_TARGET}" == "r5" ]]; then
-        TARGET="r5"
-        # Explicit --r5: run setup steps then build firmware.
+        TARGET="setup"
+    elif [[ "${EXPLICIT_TARGET}" == "r5" || "${EXPLICIT_TARGET}" == "pru" || "${EXPLICIT_TARGET}" == "all" ]]; then
+        TARGET="${EXPLICIT_TARGET}"
         SETUP_ONLY="false"
     fi
 fi
 
 if [[ "${CLEAN_ONLY}" == "true" && -z "${TARGET}" ]]; then
-    TARGET="both"
+    TARGET="all"
 fi
 
 if [[ "${CLEAN_ONLY}" != "true" && "${SETUP_ONLY}" != "true" && -z "${TARGET}" ]]; then
-    if [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" ]]; then
-        TARGET="r5"
+    if want_ti_setup; then
+        TARGET="setup"
         SETUP_ONLY="true"
     else
-        print_error "A target is required: --linux, --r5, or --both"
+        print_error "A target is required: --linux, --r5, --pru, or --all"
         print_help
         exit 1
     fi
 fi
 
 if [[ -z "${TARGET}" ]]; then
-    TARGET="r5"
+    TARGET="setup"
 fi
 
 if command -v docker >/dev/null 2>&1; then
     CONTAINER_ENGINE="docker"
+    # Match host UID/GID so bind-mounted outputs are owned by the invoking user.
     USER_FLAGS=("-u" "$(id -u):$(id -g)")
 elif command -v podman >/dev/null 2>&1; then
     CONTAINER_ENGINE="podman"
     MOUNT_SUFFIX=":Z"
-    USER_FLAGS=("--userns=keep-id")
+    # keep-id alone still starts as image USER (root in Dockerfile.ti), which
+    # creates bind-mount files as nobody/overflow. Always pass -u with keep-id.
+    USER_FLAGS=("--userns=keep-id" "-u" "$(id -u):$(id -g)")
 else
     print_error "Neither docker nor podman command found. Install a container engine first."
     exit 1
@@ -289,6 +332,21 @@ run_container() {
     "${CONTAINER_ENGINE}" "${run_args[@]}"
 }
 
+join_commands() {
+    local joined=""
+    local part
+    for part in "$@"; do
+        if [[ -z "${part}" ]]; then
+            continue
+        fi
+        if [[ -n "${joined}" ]]; then
+            joined+=" && "
+        fi
+        joined+="${part}"
+    done
+    printf '%s' "${joined}"
+}
+
 check_r5_pdk_libs() {
     local profile="${BUILD_MODE}"
     local sdk_root="${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
@@ -296,14 +354,14 @@ check_r5_pdk_libs() {
 
     if [[ ! -d "${sdk_root}" ]]; then
         print_error "TI SDK not found at ${sdk_root}"
-        print_error "Run: ./scripts/build.sh --fetch-sdk"
+        print_error "Run: ./scripts/build.sh --setup"
         exit 1
     fi
 
     pdk_path="$(sdk_resolve_pdk_path "${sdk_root}" || true)"
     if [[ -z "${pdk_path}" ]]; then
         print_error "pdk_jacinto_* not found under ${sdk_root}"
-        print_error "Run: ./scripts/build.sh --fetch-sdk"
+        print_error "Run: ./scripts/build.sh --setup"
         exit 1
     fi
 
@@ -331,9 +389,64 @@ check_r5_pdk_libs() {
     done
 
     if [[ "${missing}" -ne 0 ]]; then
-        print_error "PDK ${profile} libraries are missing. Run: ./scripts/build.sh --build-pdk"
+        print_error "PDK ${profile} libraries are missing. Run: ./scripts/build.sh --setup"
         exit 1
     fi
+}
+
+check_pssp_ready() {
+    local pssp_dir
+    pssp_dir="$(pssp_resolve_dir "${REPO_ROOT}")"
+
+    if ! pssp_headers_ok "${pssp_dir}"; then
+        print_error "PSSP headers not found under ${pssp_dir}"
+        print_error "Run: ./scripts/build.sh --setup"
+        exit 1
+    fi
+    if ! pssp_lib_ok "${pssp_dir}"; then
+        print_error "PSSP lib/rpmsg_lib.lib missing under ${pssp_dir}"
+        print_error "Run: ./scripts/build.sh --setup"
+        exit 1
+    fi
+}
+
+# Fetch/build TI SDK, PDK, and/or PSSP in one TI-container invocation.
+run_ti_dep_setup() {
+    local -a cmd_parts=()
+    local need_sdk_mount="false"
+    local joined=""
+
+    if [[ "${FETCH_SDK}" != "true" && "${BUILD_PDK}" != "true" \
+        && "${FETCH_PSSP}" != "true" && "${BUILD_PSSP}" != "true" ]]; then
+        return 0
+    fi
+
+    build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
+
+    if [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" ]]; then
+        need_sdk_mount="true"
+    fi
+
+    print_header "TI dependency setup"
+    if [[ "${FETCH_SDK}" == "true" ]]; then
+        print_info "Fetch TI SDK ${TI_SDK_VERSION}"
+        cmd_parts+=("/workspace/scripts/lib/fetch_ti_sdk.sh --ti-sdk-dir /home/builder/ti")
+    fi
+    if [[ "${BUILD_PDK}" == "true" ]]; then
+        print_info "Build PDK libraries (debug + release)"
+        cmd_parts+=("/workspace/scripts/lib/build_pdk_libs.sh --ti-sdk-dir /home/builder/ti")
+    fi
+    if [[ "${FETCH_PSSP}" == "true" ]]; then
+        print_info "Fetch PSSP (${PSSP_COMMIT})"
+        cmd_parts+=("/workspace/scripts/lib/fetch_pssp.sh --repo-root /workspace")
+    fi
+    if [[ "${BUILD_PSSP}" == "true" ]]; then
+        print_info "Build PSSP rpmsg_lib"
+        cmd_parts+=("/workspace/scripts/lib/build_pssp_lib.sh --repo-root /workspace")
+    fi
+
+    joined="$(join_commands "${cmd_parts[@]}")"
+    run_container "${TI_IMAGE}" "${need_sdk_mount}" "${joined}"
 }
 
 run_linux_build() {
@@ -352,68 +465,72 @@ run_linux_build() {
     run_container "${DEBIAN_IMAGE}" false "${cmd}"
 }
 
-run_ti_container() {
-    local cmd="$1"
+run_r5_firmware() {
     build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
-    run_container "${TI_IMAGE}" true "${cmd}"
-}
-
-run_r5_work() {
-    local cmd_parts=()
 
     if [[ "${CLEAN_ONLY}" == "true" ]]; then
-        cmd_parts+=("make -C /workspace/R5_SIDE clean")
         print_header "Cleaning R5 build artifacts"
-        run_ti_container "${cmd_parts[*]}"
+        run_container "${TI_IMAGE}" true "make -C /workspace/R5_SIDE clean"
         return 0
     fi
 
-    if [[ "${FETCH_SDK}" == "true" ]]; then
-        cmd_parts+=("/workspace/scripts/lib/fetch_ti_sdk.sh --ti-sdk-dir /home/builder/ti")
+    # Skip the host-side check when this same invocation just built the PDK.
+    if [[ "${BUILD_PDK}" != "true" && "${FETCH_SDK}" != "true" ]]; then
+        check_r5_pdk_libs
     fi
 
-    if [[ "${BUILD_PDK}" == "true" ]]; then
-        # Default build_pdk_libs.sh builds both debug and release profiles.
-        cmd_parts+=("/workspace/scripts/lib/build_pdk_libs.sh --ti-sdk-dir /home/builder/ti")
+    print_header "R5 firmware build (${BUILD_MODE})"
+    print_info "PDK profile=${BUILD_MODE}"
+    run_container "${TI_IMAGE}" true \
+        "make -C /workspace/R5_SIDE clean && make -C /workspace/R5_SIDE BUILD_MODE=${BUILD_MODE}"
+}
+
+run_pru_firmware() {
+    build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
+
+    if [[ "${CLEAN_ONLY}" == "true" ]]; then
+        print_header "Cleaning PRU0_0 build artifacts"
+        run_container "${TI_IMAGE}" false "make -C /workspace/PRU0_0_SIDE clean"
+        return 0
     fi
 
-    if [[ "${SETUP_ONLY}" != "true" && ( "${TARGET}" == "r5" || "${TARGET}" == "both" ) ]]; then
-        if [[ "${FETCH_SDK}" != "true" && "${BUILD_PDK}" != "true" ]]; then
-            check_r5_pdk_libs
-        fi
-        cmd_parts+=("make -C /workspace/R5_SIDE clean && make -C /workspace/R5_SIDE BUILD_MODE=${BUILD_MODE}")
-        print_header "R5 firmware build (${BUILD_MODE})"
-        print_info "PDK profile=${BUILD_MODE}"
-    elif [[ "${FETCH_SDK}" == "true" || "${BUILD_PDK}" == "true" ]]; then
-        print_header "TI SDK / PDK setup"
+    # Skip the host-side check when this same invocation just built PSSP.
+    if [[ "${BUILD_PSSP}" != "true" && "${FETCH_PSSP}" != "true" ]]; then
+        check_pssp_ready
     fi
 
-    if [[ ${#cmd_parts[@]} -eq 0 ]]; then
-        print_error "Nothing to run in TI container."
-        exit 1
-    fi
-
-    local joined=""
-    for part in "${cmd_parts[@]}"; do
-        if [[ -n "${joined}" ]]; then
-            joined+=" && "
-        fi
-        joined+="${part}"
-    done
-
-    run_ti_container "${joined}"
+    print_header "PRU0_0 firmware build"
+    print_info "TI container (clpru / lnkpru)"
+    run_container "${TI_IMAGE}" false \
+        "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/PRU0_0_SIDE all"
 }
 
 case "${TARGET}" in
+    setup)
+        run_ti_dep_setup
+        ;;
     linux)
         run_linux_build
         ;;
     r5)
-        run_r5_work
+        if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
+            run_ti_dep_setup
+        fi
+        run_r5_firmware
         ;;
-    both)
+    pru)
+        if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
+            run_ti_dep_setup
+        fi
+        run_pru_firmware
+        ;;
+    all)
+        if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
+            run_ti_dep_setup
+        fi
         run_linux_build
-        run_r5_work
+        run_r5_firmware
+        run_pru_firmware
         ;;
     *)
         print_error "Unknown target: ${TARGET}"
@@ -423,13 +540,19 @@ esac
 
 if [[ "${CLEAN_ONLY}" == "true" ]]; then
     print_success "Clean completed for target=${TARGET}."
-elif [[ "${SETUP_ONLY}" == "true" ]]; then
-    print_success "SDK/PDK setup completed under ${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
-    print_info "PDK libraries (debug + release) are under that tree; firmware ELFs are produced by --r5 or --both."
+elif [[ "${TARGET}" == "setup" || "${SETUP_ONLY}" == "true" ]]; then
+    print_success "Dependency setup completed (TI SDK/PDK + PSSP)."
+    print_info "SDK/PDK: ${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
+    print_info "PSSP:    ${REPO_ROOT}/${PSSP_DIR_REL}"
+    print_info "Next: ./scripts/build.sh --r5 | --pru | --linux | --all"
 elif [[ "${TARGET}" == "linux" ]]; then
     print_success "Linux build completed. Artifacts are under ./build (and LINUX_SIDE/build)."
 elif [[ "${TARGET}" == "r5" ]]; then
     print_success "R5 build completed. Firmware ELF is under ./build/R5_0/"
+elif [[ "${TARGET}" == "pru" ]]; then
+    print_success "PRU0_0 build completed. Firmware is under ./build/PRU0_0/"
+elif [[ "${TARGET}" == "all" ]]; then
+    print_success "Full build completed (Linux + R5 + PRU). Artifacts under ./build/"
 else
     print_success "Build completed. Artifacts are under ./build/"
 fi

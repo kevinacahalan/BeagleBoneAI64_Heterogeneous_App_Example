@@ -10,7 +10,7 @@ fi
 
 SCRIPT_DIR=$(dirname "$0")
 
-BUILD_SCRIPT="$SCRIPT_DIR/build.sh --both"
+BUILD_SCRIPT="$SCRIPT_DIR/build.sh --all"
 RSYNC_SOURCE_DIR="$SCRIPT_DIR/../"
 RSYNC_DEST_DIR="~/BeagleBoneAI64_Heterogeneous_App_Example/"
 SSH_DEST=""  # SSH host alias or user@host

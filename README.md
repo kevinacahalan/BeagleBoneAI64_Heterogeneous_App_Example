@@ -11,6 +11,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 ### HOW TO RUN/SETUP
 - To test quadrature encoder reading, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
 - To see PWM work, connect an LED to P9_25.
+- To see PRU0_0 RPMsg LED blinks, connect an LED to **P8_11**.
 - To see SPI7, connect a logic analyzer to P9_28 (CS), P9_31 (CLK) and P9_30 (MOSI).
 - To try the R5 UART polling self-test, connect P9_16 (UART6_TX) to P8_28 (UART8_RX).
 - *SCROLL DOWN BELOW for build and execution instructions*
@@ -23,6 +24,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **Exception and Interrupt Handling**: TI J721e SDK/PDK exception/interrupt handlers.
 - **PWM Signal Generation**: Flashing LED on pin P9_25.
 - **Rpmsg**: Basic Linux-R5 core communication with RPMSG, cross core function calling.
+- **PRU0_0 hello + RPMsg LED**: `PRU0_0_SIDE/` — remoteproc trace hello-world, and blink-count on P8_11 via `rpmsg_char` / `/dev/rpmsgN` (build with `./scripts/build.sh --pru`).
 - **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
 - **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
 - **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
@@ -32,6 +34,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **Shared Memory**: Linux-R5 memory sharing (`SHARED_CODE/include/shared_mem.h`, `SharedMemoryRegion* sharedMem`). **Warning**: 16-bit aligned reads/writes required to avoid crashes; standard `memcpy()` will crash.
 
 ### Planned
+- **RTU0_0 + PRU0_0 split**: Move RPMsg onto `RTU0_0_SIDE/` (like loic example-05); keep pin timing on PRU0_0.
 - **GPIO Linux**: Tested and working with `gpiod` library, need to write nice example code.
 - **SPI Linux**: Tested, working; need to write nice example code.
 - **UART Linux**: Tested, working; pending nice example code, symlink bug fix for 6.12 firmware.
@@ -75,12 +78,12 @@ See [`docker/README.md`](docker/README.md) for details on why two images are use
 
 **Requirements:** Podman or Docker on the host. No host-installed cross-compilers required.
 
-#### One-time setup (SDK + PDK libraries)
+#### One-time setup (SDK/PDK + PSSP)
 
-Processor SDK RTOS **11.02.01.03** for J721E:
+Processor SDK RTOS **11.02.01.03** for J721E, plus the PRU Software Support Package:
 
 ```bash
-# Downloads ~3 GB SDK to ~/ti, extracts it, and builds PDK debug + release libraries (30–60+ min)
+# Downloads ~3 GB SDK to ~/ti, builds PDK debug+release libs, and fetches/builds PSSP
 ./scripts/build.sh --setup
 ```
 
@@ -93,22 +96,29 @@ After extract, the SDK lives at:
 PDK libraries used by this project (`.aer5f` extension), under both `debug` and `release` profiles:
 `~/ti/ti-processor-sdk-rtos-j721e-evm-11_02_01_03/pdk_jacinto_*/packages/ti/[LIBRARY]/lib/j721e/...`
 
+PSSP is cloned to `third_party/pru-software-support-package/` and `lib/rpmsg_lib.lib` is built there.
+
 #### Build commands
 
 ```bash
-# Build everything (Debian 13 for Linux, then TI for R5)
-./scripts/build.sh --both
+# After --setup: build Linux + R5 + PRU
+./scripts/build.sh --all
 
-# Individual targets
+# Individual targets (after --setup)
 ./scripts/build.sh --linux
 ./scripts/build.sh --r5
+./scripts/build.sh --pru      # PRU0_0 hello + rpmsg_led (same TI container as --r5)
 
 # Release-flavored application + matching PDK release libs
-./scripts/build.sh --both --release
+./scripts/build.sh --all --release
 
 # Clean artifacts
-./scripts/build.sh --clean --both
+./scripts/build.sh --clean --all
+./scripts/build.sh --clean --pru
 ```
+
+PRU firmware outputs: `build/PRU0_0/pru0_0-hello.out`, `build/PRU0_0/pru0_0-rpmsg-led.out`.
+On the board: `sudo ./scripts/debug_pru0_0.sh start hello` (or `rpmsg_led`). See [`PRU0_0_SIDE/README.md`](PRU0_0_SIDE/README.md).
 
 `BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile for most drivers:
 - `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5, links PDK **debug** `.aer5f` libs where available
@@ -116,7 +126,7 @@ PDK libraries used by this project (`.aer5f` extension), under both `debug` and 
 
 Note: TI only builds sciclient and IPC for `mcu2_0` under the **release** profile, so those two always link from `.../release/` even in a debug app build.
 
-`--setup` / `--build-pdk` build **both** PDK profiles so either mode can link.
+`--setup` / `--build-pdk` build **both** PDK profiles so either mode can link. `--setup` also fetches PSSP and builds `rpmsg_lib`.
 
 There is no supported x86 local-run build for this example app. The Linux build target is the BeagleBone `aarch64` binary.
 
