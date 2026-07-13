@@ -5,6 +5,7 @@
  * Port 30 → /dev/rpmsgN (see host/blink_count.py).
  * P8_11 = PRG0_PRU0_GPO17 = __R30 bit 17 (overlay must mux mode 0).
  * Overlay must provide &pru0_0 vring IRQ or boot fails with -ENXIO.
+ * Debug: remoteproc trace0 via TYPE_TRACE / gDebugMemLog.
  */
 
 #include <stdint.h>
@@ -43,6 +44,43 @@ volatile register uint32_t __R31;
 #define BLINK_HALF_CYCLES 62500000u
 
 uint8_t payload[RPMSG_MESSAGE_SIZE];
+
+static uint16_t g_trace_pos;
+
+static void trace_putc(char c)
+{
+	if (g_trace_pos < (DebugP_MEM_LOG_SIZE - 1u)) {
+		gDebugMemLog[g_trace_pos++] = c;
+		gDebugMemLog[g_trace_pos] = '\0';
+	}
+}
+
+static void trace_puts(const char *s)
+{
+	while (*s != '\0') {
+		trace_putc(*s);
+		s++;
+	}
+}
+
+static void trace_u32(uint32_t val)
+{
+	char temp[16];
+	uint16_t i = 0;
+	uint16_t j;
+
+	if (val == 0u) {
+		trace_putc('0');
+		return;
+	}
+	while (val > 0u) {
+		temp[i++] = (char)('0' + (val % 10u));
+		val /= 10u;
+	}
+	for (j = 0; j < i; j++) {
+		trace_putc(temp[i - 1u - j]);
+	}
+}
 
 static uint32_t parse_uint32(const char *str, uint16_t max_len)
 {
@@ -106,8 +144,12 @@ void main(void)
 	uint16_t src, dst, len;
 	volatile uint8_t *status;
 
+	g_trace_pos = 0;
+	gDebugMemLog[0] = '\0';
+
 	/* Route __R30 to external GPO pins (same as am65x/j721e ICSSG) */
 	CT_CFG.gpcfg0_reg = 0;
+	trace_puts("PRU0_0 rpmsg_led boot\n");
 
 	CT_INTC.STATUS_CLR_INDEX_REG_bit.STATUS_CLR_INDEX = FROM_ARM_HOST;
 
@@ -115,6 +157,7 @@ void main(void)
 	while (!(*status & VIRTIO_CONFIG_S_DRIVER_OK)) {
 		;
 	}
+	trace_puts("virtio DRIVER_OK\n");
 
 	pru_rpmsg_init(&transport, &resourceTable.rpmsg_vring0,
 		       &resourceTable.rpmsg_vring1, TO_ARM_HOST, FROM_ARM_HOST);
@@ -123,6 +166,7 @@ void main(void)
 	       PRU_RPMSG_SUCCESS) {
 		;
 	}
+	trace_puts("channel ready port=30\n");
 
 	while (1) {
 		if (__R31 & HOST_INT) {
@@ -145,8 +189,13 @@ void main(void)
 				}
 
 				count = parse_uint32((char *)payload, len);
+				trace_puts("rx count=");
+				trace_u32(count);
+				trace_puts("\n");
+
 				if (count > 0) {
 					blink_led(count);
+					trace_puts("blink done\n");
 				}
 
 				for (i = 0; prefix[i] != '\0'; i++) {
@@ -160,6 +209,7 @@ void main(void)
 				response[pos] = '\0';
 
 				pru_rpmsg_send(&transport, dst, src, response, (uint16_t)(pos + 1u));
+				trace_puts("ack sent\n");
 			}
 		}
 	}

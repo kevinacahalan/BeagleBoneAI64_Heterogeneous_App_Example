@@ -132,8 +132,11 @@ SECTIONS {
 	   ARMv8 (64-bit) kernel */
 	.resource_table : ALIGN (8) >  PRU0_DMEM_0, PAGE 1
 
-	/* .log_shared_mem is hello-only (remoteproc trace0); omit here so
-	 * the linker does not warn #10068-D "no matching section". */
+	/* remoteproc trace0 buffer */
+	.log_shared_mem :
+	{
+		*(.log_shared_mem*)
+	} > PRU0_DMEM_0, PAGE 1
 
 	.pru_irq_map (COPY) :
 	{
