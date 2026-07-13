@@ -84,8 +84,8 @@ Run with no arguments to show this help.
 Firmware targets:
     --linux                Build only the Linux side (aarch64).
     --r5                   Build only the R5 firmware (requires --setup first).
-    --pru                  Build only PRU0_0 firmware (requires --setup first).
-    --all                  Build Linux + R5 + PRU (requires --setup first).
+    --pru                  Build PRU0_0 + RTU0_0 firmware (requires --setup first).
+    --all                  Build Linux + R5 + PRU/RTU (requires --setup first).
 
 Build mode:
     --debug                Debug build (default): app flags + PDK debug libs.
@@ -485,9 +485,10 @@ run_pru_firmware() {
     build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
 
     if [[ "${CLEAN_ONLY}" == "true" ]]; then
-        print_header "Cleaning PRU0_0 build artifacts"
+        print_header "Cleaning PRU0_0 / RTU0_0 build artifacts"
         # No TI mount needed for clean.
-        run_container "${TI_IMAGE}" false "make -C /workspace/PRU0_0_SIDE clean"
+        run_container "${TI_IMAGE}" false \
+            "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/RTU0_0_SIDE clean"
         return 0
     fi
 
@@ -496,11 +497,11 @@ run_pru_firmware() {
         check_pssp_ready
     fi
 
-    print_header "PRU0_0 firmware build"
+    print_header "PRU0_0 + RTU0_0 firmware build"
     print_info "TI container (clpru / lnkpru); PSSP from /home/builder/ti/${PSSP_DIR_NAME}"
     # Mount ~/ti so Makefile can use PSSP under /home/builder/ti/...
     run_container "${TI_IMAGE}" true \
-        "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/PRU0_0_SIDE all PSSP=/home/builder/ti/${PSSP_DIR_NAME}"
+        "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/PRU0_0_SIDE all PSSP=/home/builder/ti/${PSSP_DIR_NAME} && make -C /workspace/RTU0_0_SIDE clean && make -C /workspace/RTU0_0_SIDE all PSSP=/home/builder/ti/${PSSP_DIR_NAME}"
 }
 
 case "${TARGET}" in
@@ -548,9 +549,9 @@ elif [[ "${TARGET}" == "linux" ]]; then
 elif [[ "${TARGET}" == "r5" ]]; then
     print_success "R5 build completed. Firmware ELF is under ./build/R5_0/"
 elif [[ "${TARGET}" == "pru" ]]; then
-    print_success "PRU0_0 build completed. Firmware is under ./build/PRU0_0/"
+    print_success "PRU/RTU build completed. Firmware under ./build/PRU0_0/ and ./build/RTU0_0/"
 elif [[ "${TARGET}" == "all" ]]; then
-    print_success "Full build completed (Linux + R5 + PRU). Artifacts under ./build/"
+    print_success "Full build completed (Linux + R5 + PRU/RTU). Artifacts under ./build/"
 else
     print_success "Build completed. Artifacts are under ./build/"
 fi

@@ -462,3 +462,14 @@
 	interrupts = <16 2 2>;
 	interrupt-names = "vring";
 };
+
+/*
+ * RTU0_0 (ICSSG0 RTU0 / j7-rtu0_0) RPMsg vring — same 6.12 gap as PRU.
+ * Cells match firmware TO_ARM_HOST=20 (PSSP RTU0 / Loic example-05).
+ * See am65: interrupts = <20 4 4>; interrupt-names = "vring";
+ */
+&rtu0_0 {
+	interrupt-parent = <&icssg0_intc>;
+	interrupts = <20 4 4>;
+	interrupt-names = "vring";
+};
