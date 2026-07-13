@@ -7,7 +7,7 @@ Firmware for BeagleBone AI-64 **PRU0_0** (`j7-pru0_0` / `b034000.pru` / DT `&pru
 | App | Firmware | Linker | Purpose |
 |---|---|---|---|
 | `hello` | `build/PRU0_0/pru0_0-hello.out` | `J721E_PRU0_0.cmd` (no `.pru_irq_map`) | Writes “Hello world…” to remoteproc `trace0` |
-| `rpmsg_led` | `build/PRU0_0/pru0_0-rpmsg-led.out` | `J721E_PRU0_0_rpmsg.cmd` (`.pru_irq_map (COPY)`) | Blink P8_11 N times when Linux sends N over RPMsg |
+| `rpmsg_led` | `build/PRU0_0/pru0_0-rpmsg-led.out` | `J721E_PRU0_0_rpmsg.cmd` (`.pru_irq_map (COPY)` + TRACE) | Blink P8_11 N times when Linux sends N over RPMsg |
 | `led_worker` | `build/PRU0_0/pru0_0-led-worker.out` | `J721E_PRU0_0_worker.cmd` | Blink P8_11 from shared mailbox (pair with RTU0_0) |
 
 Hello / `led_worker` must **not** carry an empty `.pru_irq_map` section — kernel 6.12 rejects that with `header-less .pru_irq_map section` / `Boot failed: -22`.

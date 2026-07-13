@@ -1,5 +1,5 @@
 /*
- * resource_table_rpmsg.h — VirtIO RPMsg resource table for PRU0_0.
+ * resource_table_rpmsg.h — VirtIO RPMsg + TYPE_TRACE for PRU0_0 rpmsg_led.
  * Adapted from TI PSSP examples/j721e/PRU_RPMsg_Echo_Interrupt0.
  */
 
@@ -16,14 +16,25 @@
 #define VIRTIO_RPMSG_F_NS 0
 #define RPMSG_PRU_C0_FEATURES (1 << VIRTIO_RPMSG_F_NS)
 
+#define DebugP_MEM_LOG_SIZE 512
+
+#pragma DATA_SECTION(gDebugMemLog, ".log_shared_mem")
+#pragma RETAIN(gDebugMemLog)
+#pragma DATA_ALIGN(gDebugMemLog, 8)
+char gDebugMemLog[DebugP_MEM_LOG_SIZE] = { 0 };
+
+/*
+ * Without pad: base(16) + offset[2](8) + vdev+vrings(68) + trace(48) = 140.
+ * Pad 4 → 144 (multiple of 16) for rproc_start memcpy.
+ */
 struct my_resource_table {
 	struct resource_table base;
-	uint32_t offset[1];
+	uint32_t offset[2];
 	struct fw_rsc_vdev rpmsg_vdev;
 	struct fw_rsc_vdev_vring rpmsg_vring0;
 	struct fw_rsc_vdev_vring rpmsg_vring1;
-	/* 88-byte payload → pad to 96 (multiple of 16) for rproc_start memcpy */
-	uint32_t pad[2];
+	struct fw_rsc_trace trace;
+	uint32_t pad[1];
 };
 
 #pragma DATA_SECTION(resourceTable, ".resource_table")
@@ -31,10 +42,11 @@ struct my_resource_table {
 #pragma DATA_ALIGN(resourceTable, 8)
 struct my_resource_table resourceTable = {
 	1,
-	1,
+	2,
 	0, 0,
 	{
 		offsetof(struct my_resource_table, rpmsg_vdev),
+		offsetof(struct my_resource_table, trace),
 	},
 	{
 		(uint32_t)TYPE_VDEV,
@@ -61,7 +73,14 @@ struct my_resource_table resourceTable = {
 		0,
 		0,
 	},
-	{ 0, 0 },
+	{
+		TYPE_TRACE,
+		(uint32_t)gDebugMemLog,
+		DebugP_MEM_LOG_SIZE,
+		0,
+		"trace:pru0_0_rpmsg",
+	},
+	{ 0 },
 };
 
 #endif /* RESOURCE_TABLE_RPMSG_H */
