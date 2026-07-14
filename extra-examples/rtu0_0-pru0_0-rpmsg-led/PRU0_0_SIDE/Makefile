@@ -35,7 +35,7 @@ LIBS_COMMON := --library=$(PRU_CGT)/lib/libc.a --library=rtspruv3_le.lib
 
 WORKER_SRC := src/led_worker/main.c
 WORKER_OBJ := $(GEN_DIR)/led_worker_main.object
-WORKER_OUT := $(OUT_DIR)/pru0_0-led-worker.out
+WORKER_OUT := $(OUT_DIR)/pru0_0-led-worker.elf
 WORKER_MAP := $(OUT_DIR)/pru0_0-led-worker.map
 
 .PHONY: all led_worker clean

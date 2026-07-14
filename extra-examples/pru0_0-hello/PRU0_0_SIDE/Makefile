@@ -33,7 +33,7 @@ LIBS_COMMON := --library=$(PRU_CGT)/lib/libc.a --library=rtspruv3_le.lib
 
 HELLO_SRC := src/hello/main.c
 HELLO_OBJ := $(GEN_DIR)/hello_main.object
-HELLO_OUT := $(OUT_DIR)/pru0_0-hello.out
+HELLO_OUT := $(OUT_DIR)/pru0_0-hello.elf
 HELLO_MAP := $(OUT_DIR)/pru0_0-hello.map
 
 .PHONY: all hello clean

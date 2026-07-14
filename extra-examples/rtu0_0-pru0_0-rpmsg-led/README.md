@@ -17,8 +17,8 @@ scripts/run.sh
 
 Firmware outputs under `build/extra-examples/rtu0_0-pru0_0-rpmsg-led/`:
 
-- `rtu0_0-rpmsg-led.out`
-- `pru0_0-led-worker.out`
+- `rtu0_0-rpmsg-led.elf`
+- `pru0_0-led-worker.elf`
 
 ## Build
 

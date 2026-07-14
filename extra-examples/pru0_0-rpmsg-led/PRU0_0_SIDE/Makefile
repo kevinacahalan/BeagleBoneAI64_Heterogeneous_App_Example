@@ -34,7 +34,7 @@ LIBS_RPMSG := --library=$(PSSP)/lib/rpmsg_lib.lib
 
 RPMSG_SRC := src/rpmsg_led/main.c
 RPMSG_OBJ := $(GEN_DIR)/rpmsg_led_main.object
-RPMSG_OUT := $(OUT_DIR)/pru0_0-rpmsg-led.out
+RPMSG_OUT := $(OUT_DIR)/pru0_0-rpmsg-led.elf
 RPMSG_MAP := $(OUT_DIR)/pru0_0-rpmsg-led.map
 
 .PHONY: all rpmsg_led clean

@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEMO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$DEMO_DIR/../.." && pwd)"
 ROOT_SCRIPTS="$REPO_ROOT/scripts"
-FW="$REPO_ROOT/build/extra-examples/pru0_0-rpmsg-led/pru0_0-rpmsg-led.out"
+FW="$REPO_ROOT/build/extra-examples/pru0_0-rpmsg-led/pru0_0-rpmsg-led.elf"
 HOST_SCRIPT="$DEMO_DIR/LINUX_SIDE/host/blink_count.py"
 STOP_TIMEOUT_SEC=10
 
@@ -34,7 +34,7 @@ print_help() {
     echo "Usage: $0 {start|stop|restart|status|trace|run}"
     echo ""
     echo "PRU0_0 rpmsg_led (blink P8_11 via RPMsg port 30):"
-    echo "  start     Start pru0_0-rpmsg-led.out"
+    echo "  start     Start pru0_0-rpmsg-led.elf"
     echo "  stop      Stop PRU0_0 firmware"
     echo "  restart   Stop then start"
     echo "  status    Show remoteproc state"

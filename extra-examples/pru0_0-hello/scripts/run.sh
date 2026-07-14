@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEMO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$DEMO_DIR/../.." && pwd)"
 ROOT_SCRIPTS="$REPO_ROOT/scripts"
-FW="$REPO_ROOT/build/extra-examples/pru0_0-hello/pru0_0-hello.out"
+FW="$REPO_ROOT/build/extra-examples/pru0_0-hello/pru0_0-hello.elf"
 STOP_TIMEOUT_SEC=10
 
 DEVICE_MODEL=$(cat /proc/device-tree/model | sed "s/ /_/g" | tr -d '\000')
@@ -30,7 +30,7 @@ print_help() {
     echo "Usage: $0 {start|stop|restart|status|trace|run}"
     echo ""
     echo "PRU0_0 hello (remoteproc trace only):"
-    echo "  start     Start pru0_0-hello.out"
+    echo "  start     Start pru0_0-hello.elf"
     echo "  stop      Stop PRU0_0 firmware"
     echo "  restart   Stop then start"
     echo "  status    Show remoteproc state"
