@@ -1,23 +1,25 @@
+# BeagleBone AI-64 Heterogeneous App Example
+
 ![demo_image](R5_LINUX.png)
 
 This repo’s **main demo** is Linux ↔ R5F0_0 RPMsg (at the repo root: `LINUX_SIDE/`, `R5_SIDE/`, `SHARED_CODE/`). Additional PRU/RTU demos live under [`extra-examples/`](extra-examples/).
 
-For this example to work, use a **recent BeagleBoard.org Debian image with a newer TI 6.12 kernel** (`v6.12.x-ti`). R5 remoteproc stop/restart needs the graceful `RP_MBOX_SHUTDOWN` / ACK path in that kernel — older kernels may not have this.
+For the examples to work, use a **recent BeagleBoard.org Debian image with a newer TI 6.12 kernel** (`v6.12.x-ti`). R5 remoteproc stop/restart needs the graceful `RP_MBOX_SHUTDOWN` / ACK path in that kernel — older kernels may not have this.
 
 Recommended images:
 - **eMMC flasher:** [BBAI64 Debian 13.3 2026-02-12 Minimal Flasher (v6.12.x-ti)](https://www.beagleboard.org/distros/bbai64-debian-13-3-2026-02-12-minimal-flasher-v6-12-x-ti)
 - **SD card / runtime:** [BBAI64 Debian 13.5 2026-05-19 Minimal (v6.12.x-ti)](https://www.beagleboard.org/distros/bbai64-debian-13-5-2026-05-19-minimal-v6-12-x-ti)
 
-Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle
 
 ### HOW TO RUN/SETUP
-- To test quadrature encoder reading, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
+- To test quadrature encoder reading, connect IO P8_33<-->P8_34 and P8_35<-->P8_36.
 - To see PWM work, connect an LED to P9_25.
 - To see SPI7, connect a logic analyzer to P9_28 (CS), P9_31 (CLK) and P9_30 (MOSI).
 - To try the R5 UART polling self-test, connect P9_16 (UART6_TX) to P8_28 (UART8_RX).
 - For PRU LED extras, connect an LED to **P8_11** (see [`extra-examples/`](extra-examples/)).
 - *SCROLL DOWN BELOW for build and execution instructions*
 
+Build, flash, and run steps are below under **Setup board** and **Setup and build**.
 
 ### Demonstrated Features (main demo — Linux ↔ R5F0_0)
 - **Remote Processor Resource Table Initialization**: Remote-proc resource table with trace log.
@@ -25,7 +27,7 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 - **MPU and Cache Configuration**: TI AM64 sdk code...
 - **Exception and Interrupt Handling**: TI J721e SDK/PDK exception/interrupt handlers.
 - **PWM Signal Generation**: Flashing LED on pin P9_25.
-- **Rpmsg**: Basic Linux-R5 core communication with RPMSG, cross core function calling.
+- **RPMsg**: Basic Linux–R5 communication with RPMsg, including cross-core function calling.
 - **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
 - **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
 - **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
@@ -54,20 +56,19 @@ If anybody wants to contribute random stuff, please do.
 
 
 ### Setup board
-1. Grab a recent Beagle Debian **v6.12.x-ti** image, flash the eMMC, and also an SD card.
-2. Flash eMMC with the [Debian 13.3 Minimal Flasher](https://www.beagleboard.org/distros/bbai64-debian-13-3-2026-02-12-minimal-flasher-v6-12-x-ti)
-3. Flash SD card with the [Debian 13.5 Minimal](https://www.beagleboard.org/distros/bbai64-debian-13-5-2026-05-19-minimal-v6-12-x-ti) runtime image
-4. Power cycle board several times
-5. Run `df -h` to ensure you are now booting from your SD card
-6. Run this to get a newer TI kernel / DT packages among other important things: `sudo apt update ; sudo apt-get dist-upgrade -y`
-7. Run `sudo systemctl mask serial-getty@ttyGS0.service` to get around bug where sometimes uart debug login does not show up.
-8. Compile and install custom_overlays/our-custom-bbai64-overlay.dtso (refer to "Device tree info")
-9. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
-10. Power cycle the board several times
-11. Verify overlay is loaded `sudo beagle-version | grep UBOOT`
-12. Check if pins are muxed correctly `sudo ./scripts/show-pins.pl`
-13. Enable SPI for use from linux with `sudo modprobe spidev`. (Currently this example does no SPI from linux)
-14. Connect loop jumper wires P8_33<-->P8_34 and P8_35<-->P8-36 for EQEP_1 test.
+1. Flash eMMC with the [Debian 13.3 Minimal Flasher](https://www.beagleboard.org/distros/bbai64-debian-13-3-2026-02-12-minimal-flasher-v6-12-x-ti) (**v6.12.x-ti**)
+2. Flash an SD card with the [Debian 13.5 Minimal](https://www.beagleboard.org/distros/bbai64-debian-13-5-2026-05-19-minimal-v6-12-x-ti) runtime image
+3. Power cycle the board several times
+4. Run `df -h` to confirm you are booting from the SD card
+5. Update packages: `sudo apt update && sudo apt-get dist-upgrade -y`
+6. Run `sudo systemctl mask serial-getty@ttyGS0.service` to work around a bug where the UART debug login sometimes does not appear
+7. Compile and install `custom_overlays/our-custom-bbai64-overlay.dtso` (see **Device tree info**)
+8. Add the overlay `/overlays/our-custom-bbai64-overlay.dtbo` to `/boot/firmware/extlinux/extlinux.conf`
+9. Power cycle the board several times
+10. Verify the overlay is loaded: `sudo beagle-version | grep UBOOT`
+11. Check pin muxing: `sudo ./scripts/show-pins.pl`
+12. Optional (Linux SPI only): `sudo modprobe spidev` — the main demo does SPI from the R5, not Linux
+13. Connect EQEP_1 loop wires: P8_33↔P8_34 and P8_35↔P8_36
 
 
 
@@ -161,8 +162,11 @@ The SDK directory must be writable by your user (required for `--fetch-sdk`) and
 sudo chown -R "$(id -u):$(id -g)" ~/ti
 ```
 
-#### To build and copy to board:
-`[SCRIPT_DIR]/compile_and_push.sh --ssh [SSH_DEST]`
+#### To build and copy to board (from your dev machine):
+
+```bash
+./scripts/compile_and_push.sh --ssh [SSH_DEST]
+```
 
 `SSH_DEST` is an SSH host alias from `~/.ssh/config` (e.g. `bbai64`) or `user@host` (e.g. `kevinc@192.168.7.2`).
 
@@ -212,8 +216,7 @@ Working FDT set to 8ffde000
 
 ```
 
-- **Alteratively**, you may simply run the `custom_overlays/setup_dtb.sh` script on your AI64 and have anything done automatically. Be 
-warned, `setup_dtb.sh` will replace the `/boot/firmware/extlinux/extlinux.conf` config file on your board. There is potential for breakage.
+- **Alternatively**, you may run `custom_overlays/setup_dtb.sh` on the AI64 to do the overlay install automatically. **Warning:** `setup_dtb.sh` replaces `/boot/firmware/extlinux/extlinux.conf` on the board — there is potential for breakage.
 #### Resources:
 
 - You could make use of https://www.ti.com/tool/download/SYSCONFIG to figure out pin muxing when making your own overlays.
@@ -259,32 +262,31 @@ So to mux SPI6_CLK on BB pin P9_22:
 
 TI SysConfig can aid the process of configuring pin muxing, but it comes with a couple of limitations you should be aware of when using it:
 
-- **Conflicting Pads**: TI SysConfig does not automatically disable conflicting pads. These are SoC pads that share the same physical header pins on the BeagleBone as the pads you’re configuring. If conflicting pads remain enabled, there is potential for erratic behavior. Realisticaly, you'll be fine in most cases.
+- **Conflicting Pads**: TI SysConfig does not automatically disable conflicting pads. These are SoC pads that share the same physical header pins on the BeagleBone as the pads you’re configuring. If conflicting pads remain enabled, there is potential for erratic behavior. Realistically, you'll be fine in most cases.
 
 - **Signals with several pad options**: Make sure to explicitly select the correct SoC pad for each pin. Some signals have multiple SoC pad options. Normally only one of these options will go to the BB header. For example, with UART4_RXD, there are 3 options, pads AG28, P24, and W23. Ti SysConfig will by default pick the pad P24. Of these 3 pad options, AG28 is the only pad connected to the BB header. Look back at the pin mux spreadsheet linked above to figure out which SoC pads connect to which pins.
 
 - **Default Pin Direction**: TI SysConfig sets all pin muxes to "PIN_INPUT" by default, even for pins that should be outputs. For example, for the SPI6_CLK pin config (which should be an output), TI SysConfig will by default generate `J721E_IOPAD(0x170, PIN_INPUT, 7)` instead of the correct `J721E_IOPAD(0x9c, PIN_OUTPUT, 4)`. PIN_INPUT gives the pin both RX and TX perms. PIN_OUTPUT only gives TX.
 
-### Debugging R5:
----
-You can debug using OpenOCD with GDB. If configured correctly, you could even do graphical
-debugging with VScode. At some point there will be more detailed instructions here.
+### Debugging R5
+
+You can debug using OpenOCD with GDB. With the right setup, graphical debugging in VS Code is also possible (see the video link below).
 
 Some useful links:
 - Very helpful video https://www.youtube.com/watch?v=n3u3QgnAvV8
-- Debug prob setup, random info https://nmenon.github.io/k3ocd/#j721e-beaglebone-ai64
+- Debug probe setup / related info: https://nmenon.github.io/k3ocd/#j721e-beaglebone-ai64
 - OpenOCD config is here https://git.beagleboard.org/beagleboard/beaglebone-ai-64/-/issues/31
 - OpenOCD and GDB setup and install https://u-boot.readthedocs.io/en/latest/board/ti/k3.html#common-debugging-environment-openocd
 - https://forum.beagleboard.org/t/debugging-options-for-bbai64/33583/5
 - https://forum.beagleboard.org/t/minimal-cortex-r5-example-on-bbai-64/32443/10
 
 
-#### Debug from WSL Debian environment connected to TIAO USB JTAG prob:
+#### Debug from WSL Debian environment connected to TIAO USB JTAG probe:
 - Setup WSL Debian https://www.microsoft.com/store/productId/9MSVKQC78PK6?ocid=pdpshare
-- Install usbipd from PowerShell `winget install usbipd`
-- Either use the usbipd cli or the vscode extension to connected debug prob to WSL https://marketplace.visualstudio.com/items?itemName=thecreativedodo.usbip-connect
+- Install usbipd from PowerShell: `winget install usbipd`
+- Use the usbipd CLI or the VS Code extension to connect the debug probe to WSL: https://marketplace.visualstudio.com/items?itemName=thecreativedodo.usbip-connect
 
-    After successful forwarding to WSL you should see the following when you run lsusb
+    After successful forwarding to WSL you should see the following when you run `lsusb`:
     ```bash
         kevin@computer-name:~/openocd$ lsusb
         Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
@@ -294,7 +296,7 @@ Some useful links:
 
 -  Install dependencies
     ```bash
-    sudo apt-get install libtool pkg-config texinfo libusb-dev libusb-1.0.0-dev libftdi-dev libhidapi-dev autoconf automake lsusb
+    sudo apt-get install libtool pkg-config texinfo libusb-dev libusb-1.0.0-dev libftdi-dev libhidapi-dev autoconf automake usbutils
     ```
 
 -  Install and configure OpenOCD
@@ -310,12 +312,19 @@ Some useful links:
     ```
 -   Start OpenOCD
 
-    From `~/bla bla bla/openocd/tcl` run `sudo ../src/openocd -f [path folder with config]/ti_bbai64.cfg` to start OpenOCD using the BBAI64 config. OpenOCD will then tell you the ports for which it is hosting GDB's servers. There is a separate GDB server hosted for each core.
+    From the OpenOCD `tcl/` directory (e.g. `~/openocd/tcl`), run:
 
-    If you get the error `Error: Invalid ACK (0) in DAP response` jiggle your connection to the board back and forth.
+    ```bash
+    sudo ../src/openocd -f /path/to/ti_bbai64.cfg
+    ```
 
-#### Self Hosted debugging (No physical debug prob):
-note: **NOT SURE IF THIS HAS BEEN TESTED OR PROVEN TO WORK...**
+    OpenOCD will print the GDB server ports (one per core).
+
+    If you get `Error: Invalid ACK (0) in DAP response`, reseat the JTAG connection.
+
+#### Self-hosted debugging (no physical debug probe)
+
+**Note:** I have not done this yet, these instructions might be a little off.
 - Install dependencies on BeagleBone
     ```bash
     sudo apt-get install libtool pkg-config texinfo libusb-dev libusb-1.0.0-dev libftdi-dev libhidapi-dev autoconf automake
@@ -342,24 +351,34 @@ note: **NOT SURE IF THIS HAS BEEN TESTED OR PROVEN TO WORK...**
 Make sure BeagleBone bootloader firmware version is `8.6.3` or greater. This can be checked
 with `sudo k3conf dump processor`.
 
-From `~/bla bla bla/openocd/tcl` run `sudo ../src/openocd -f ./board/ti_j721e_swd_native.cfg` to start OpenOCD. OpenOCD will then tell you the ports for which it is hosting GDB servers. 
+From the OpenOCD `tcl/` directory (e.g. `~/openocd/tcl`), run:
 
-#### Using GDB:
-Connect to GDB server for core on local port #### `gdb-multiarch -ex 'target extended-remote localhost:####' -ex 'set arch armv7' -ex 'file ~/PATH_TO_ELF/r5f_r5f0_0.elf'`. OpenOCD will tell you which cores are on which ports.
+```bash
+sudo ../src/openocd -f ./board/ti_j721e_swd_native.cfg
+```
 
-That ELF in that last option `-ex 'file ~/PATH_TO_ELF/r5f_r5f0_0.elf'` should be the same as the ELF currently running on the 
-core that you're planning to debug. GDB uses the debug info from that ELF. Without the debug info you would be lost looking at bare assembly.
+OpenOCD will print the GDB server ports.
 
-**WARNING**, MAKE SURE THAT THE ELF THAT YOU USE FOR DEBUG INFO IS THE SAME... In other words, if the ELF that you are running was compiled on the Beaglebone, DO NOT use an ELF you compiled on your development machine for debug info.
+#### Using GDB
 
+Connect to the GDB server for a core on local port `####` (OpenOCD prints which core is on which port):
 
-The debugger can only connect to a core while it is on and not in a halted/crashed state. When debugging broken firmware, after each crash you may need to start the R5 core into a nice clean state from linux with remoteproc. Make sure to alway have a working firmware on hand for core startup and reset. 
+```bash
+gdb-multiarch \
+  -ex 'target extended-remote localhost:####' \
+  -ex 'set arch armv7' \
+  -ex 'file ~/PATH_TO_ELF/r5f_r5f0_0.elf'
+```
 
-When the BeagleBone starts up, the R5 cores are in some halted state and thus can not be connected to by OpenOCD/GDB.
+**WARNING**, The ELF passed to `-ex 'file ...'` must match the ELF currently running on that core — GDB needs its debug info. **Do not** mix an on-board build with a differently built ELF from your development machine.
 
-#### Using VScode with GDB for a graphic debugging experience:
-Know that this is possible, the instructions will be written at some point. VScode setup is slightly covered in this
-video https://www.youtube.com/watch?v=n3u3QgnAvV8.
+The debugger can only connect while the core is on and not halted/crashed. After a crash you may need to restart the R5 via remoteproc from Linux; keep a known-good firmware on hand for reset.
+
+On boot the R5 cores start halted, so OpenOCD/GDB cannot attach until firmware has been started.
+
+#### Using VS Code with GDB
+
+Graphical debugging is possible; VS Code setup is lightly covered in this video: https://www.youtube.com/watch?v=n3u3QgnAvV8.
 
 
 ### Useful Commands
@@ -371,7 +390,7 @@ video https://www.youtube.com/watch?v=n3u3QgnAvV8.
 | `dmesg \| grep -i "reserved mem"`                 | Shows memory mapping information from logs.  |
 | `sudo cat /proc/iomem`                            | More memory mapping info.                    |
 | `sudo beagle-version \| grep UBOOT`               | Displays loaded device tree overlays.        |
-| `ls /sys/devices/platform/bus@100000/`            | Devices that can now be used from linux???   |
+| `ls /sys/devices/platform/bus@100000/`            | Platform devices visible to Linux            |
 | `dtc -I fs /sys/firmware/devicetree/base > dt.txt`| For dt debugging                             |
 | `sudo journalctl -k`                              | View kernel logs                             |
 | `sudo dmesg`                                      | View kernel logs                             |
@@ -386,7 +405,7 @@ video https://www.youtube.com/watch?v=n3u3QgnAvV8.
 - **[TDA4VM datasheet](https://www.ti.com/lit/ds/symlink/tda4vm.pdf?ts=1747602249590)**: Useful for SoC pad/pin stuff.
 - **[Cortex R5 TRM](https://developer.arm.com/documentation/ddi0460/d/?lang=en)**: Technical Reference Manual for the Cortex R5.
 - **[TI RTOS SDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/latest/exports/docs/psdk_rtos/docs/user_guide/overview.html#)**: Overview of the TI RTOS SDK.
-- **[TI PDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/latest/exports/docs/pdk_jacinto_11_01_00_17/docs/pdk_introduction.html#Documentation)**: Links to API guide and user guide.
+- **[TI PDK Documentation](https://software-dl.ti.com/jacinto7/esd/processor-sdk-rtos-jacinto7/11_02_01_03/exports/docs/pdk_jacinto_11_02_01_08/docs/pdk_introduction.html)**: Links to API guide and user guide (SDK 11.02.01.03).
 - **[Processor SDK Linux Software Developer’s Guide](https://texasinstruments.github.io/processor-sdk-doc/processor-sdk-linux-J721E/esd/docs/11_00/devices/J7_Family/linux/index.html)**: Yet another source of documentation.
 - **[UBoot documentation for the board](https://docs.u-boot.org/en/latest/board/beagle/j721e_beagleboneai64.html)**: How booting works.
 - **[IPC for J721E](https://texasinstruments.github.io/processor-sdk-doc/processor-sdk-linux-J721E/esd/docs/11_00/linux/Foundational_Components_IPC_J721E.html)**: J721e sdk documentation explaining how IPC works.
@@ -424,4 +443,8 @@ https://docs.zephyrproject.org/latest/boards/beagle/beaglebone_ai64/doc/index.ht
 - **[Beagle Images](https://www.beagleboard.org/distros)**: Release images.
 - **[Random Beagle Images](https://rcn-ee.com/rootfs/)**: Random images.
 
+## Credit
+This repo was started/forked from [Fred Eckert's Cortex-R5 example](https://github.com/FredEckert/bbai64_cortex-r5_example/tree/r5_toggle).
+
+The PRU examples are based off [loic-fejoz's beaglebone-ai64-tutorial](https://github.com/loic-fejoz/beaglebone-ai64-tutorial/tree/main)
 
