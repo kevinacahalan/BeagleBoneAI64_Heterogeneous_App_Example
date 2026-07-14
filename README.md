@@ -1,5 +1,7 @@
 ![demo_image](R5_LINUX.png)
 
+This repo’s **main demo** is Linux ↔ R5F0_0 RPMsg (at the repo root: `LINUX_SIDE/`, `R5_SIDE/`, `SHARED_CODE/`). Additional PRU/RTU demos live under [`extra-examples/`](extra-examples/).
+
 For this example to work, use a **recent BeagleBoard.org Debian image with a newer TI 6.12 kernel** (`v6.12.x-ti`). R5 remoteproc stop/restart needs the graceful `RP_MBOX_SHUTDOWN` / ACK path in that kernel — older kernels may not have this.
 
 Recommended images:
@@ -11,25 +13,29 @@ Example started from Fred Eckert's example: https://github.com/FredEckert/bbai64
 ### HOW TO RUN/SETUP
 - To test quadrature encoder reading, connect IO P8_33<-->P8_34 and P8_35<-->P8-36.
 - To see PWM work, connect an LED to P9_25.
-- To see PRU0_0 RPMsg LED blinks, connect an LED to **P8_11**.
 - To see SPI7, connect a logic analyzer to P9_28 (CS), P9_31 (CLK) and P9_30 (MOSI).
 - To try the R5 UART polling self-test, connect P9_16 (UART6_TX) to P8_28 (UART8_RX).
+- For PRU LED extras, connect an LED to **P8_11** (see [`extra-examples/`](extra-examples/)).
 - *SCROLL DOWN BELOW for build and execution instructions*
 
 
-### Demonstrated Features
+### Demonstrated Features (main demo — Linux ↔ R5F0_0)
 - **Remote Processor Resource Table Initialization**: Remote-proc resource table with trace log.
 - **FPU Initialization for R5 Core**: TI AM64 sdk code...
 - **MPU and Cache Configuration**: TI AM64 sdk code...
 - **Exception and Interrupt Handling**: TI J721e SDK/PDK exception/interrupt handlers.
 - **PWM Signal Generation**: Flashing LED on pin P9_25.
 - **Rpmsg**: Basic Linux-R5 core communication with RPMSG, cross core function calling.
-- **PRU0_0 hello + RPMsg LED**: `PRU0_0_SIDE/` — remoteproc trace hello-world, and blink-count on P8_11 via `rpmsg_char` / `/dev/rpmsgN` (build with `./scripts/build.sh --pru`).
-- **RTU0_0 + PRU0_0 LED**: `RTU0_0_SIDE/` + `PRU0_0_SIDE/led_worker` — RPMsg on RTU, blink on PRU via shared DMEM (`sudo ./scripts/debug_rtu_pru_led.sh start`).
 - **R5 SPI output**: SPI7 transfers on P9_28 (CS), P9_31 (CLK), P9_30 (MOSI).
 - **R5 EQEP Encoder Reading**: Reading quadrature encoder EQEP_1 from R5 core.
 - **R5 GPIO**: Shown with quadrature encoder simulation and bit-banged SPI.
 - **R5 UART TX, and polling RX**: P9_16 (UART6_TX) to P8_28 (UART8_RX) polling example.
+
+### Extra examples (PRU / RTU)
+See [`extra-examples/README.md`](extra-examples/README.md):
+- **pru0_0-hello** — remoteproc trace hello-world
+- **pru0_0-rpmsg-led** — blink-count on P8_11 via `rpmsg_char`
+- **rtu0_0-pru0_0-rpmsg-led** — RPMsg on RTU, blink on PRU via shared DMEM
 
 ### Implemented but not used by test code yet
 - **Shared Memory**: Linux-R5 memory sharing (`SHARED_CODE/include/shared_mem.h`, `SharedMemoryRegion* sharedMem`). **Warning**: 16-bit aligned reads/writes required to avoid crashes; standard `memcpy()` will crash.
@@ -101,24 +107,31 @@ PSSP is cloned to `~/ti/pru-software-support-package/` (next to the SDK) and `li
 #### Build commands
 
 ```bash
-# After --setup: build Linux + R5 + PRU
+# After --setup: build everything (main demo + extras)
 ./scripts/build.sh --all
 
-# Individual targets (after --setup)
-./scripts/build.sh --linux
-./scripts/build.sh --r5
-./scripts/build.sh --pru      # PRU0_0 + RTU0_0 firmware (same TI container as --r5)
+# Main demo (Linux + R5); optional side filters
+./scripts/build.sh --main
+./scripts/build.sh --main --linux
+./scripts/build.sh --main --r5
+
+# Extra examples (PRU / RTU); optional side filters
+./scripts/build.sh --extras
+./scripts/build.sh --extras --pru
+./scripts/build.sh --extra pru0_0-hello
+./scripts/build.sh --extra rtu0_0-pru0_0-rpmsg-led --rtu
 
 # Release-flavored application + matching PDK release libs
 ./scripts/build.sh --all --release
 
 # Clean artifacts
 ./scripts/build.sh --clean --all
-./scripts/build.sh --clean --pru
+./scripts/build.sh --clean --main
+./scripts/build.sh --clean --extras --pru
 ```
 
-PRU/RTU firmware outputs: `build/PRU0_0/pru0_0-hello.out`, `build/PRU0_0/pru0_0-rpmsg-led.out`, `build/PRU0_0/pru0_0-led-worker.out`, `build/RTU0_0/rtu0_0-rpmsg-led.out`.
-On the board: `sudo ./scripts/debug_pru0_0.sh start hello` (or `rpmsg_led`), then for the LED demo `sudo python3 PRU0_0_SIDE/host/blink_count.py 5`. For the cooperative RTU+PRU demo: `sudo ./scripts/debug_rtu_pru_led.sh start` then the same host script. See [`PRU0_0_SIDE/README.md`](PRU0_0_SIDE/README.md) and [`RTU0_0_SIDE/README.md`](RTU0_0_SIDE/README.md).
+Main demo outputs: `build/linux/LINUX_SIDE_aarch64`, `build/R5_0/r5f_r5f0_0.elf`.
+Extra-example firmwares: `build/extra-examples/<demo-name>/`. See [`extra-examples/README.md`](extra-examples/README.md).
 
 `BUILD_MODE` affects compiler flags for both Linux and R5 **application** sources, and for R5 also selects the matching PDK library profile for most drivers:
 - `debug` (default): `-Og -g3` for Linux, `-g3 -Og` for R5, links PDK **debug** `.aer5f` libs where available

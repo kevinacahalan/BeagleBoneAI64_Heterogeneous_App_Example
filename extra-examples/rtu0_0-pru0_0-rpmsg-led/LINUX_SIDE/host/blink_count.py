@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Send a blink count to PRU0_0 over rpmsg_char and print the ACK.
+"""Send a blink count to RTU0_0 over rpmsg_char and print the ACK.
 
 On kernel 6.12 the old rpmsg_pru driver (/dev/rpmsg_pru30) is gone.
-PRU firmware announces channel "rpmsg-raw" on port 30; rpmsg_char creates
+RTU firmware announces channel "rpmsg-raw" on port 30; rpmsg_char creates
 /dev/rpmsgN. This script finds that device (or creates an endpoint via
-/dev/rpmsg_ctrl* under the PRU remoteproc).
+/dev/rpmsg_ctrl* under the PRU remoteproc as a fallback).
 """
 
 from __future__ import annotations
@@ -158,10 +158,10 @@ def main() -> int:
     device = resolve_device(args.device, args.discover_timeout)
     if not device:
         print(
-            "No PRU RPMsg device found (expected rpmsg-raw port 30).\n"
+            "No RPMsg device found (expected rpmsg-raw port 30).\n"
             "Start firmware first:\n"
-            "  sudo ./scripts/debug_pru0_0.sh start rpmsg_led\n"
-            "Ensure the overlay has &pru0_0 vring IRQ and was rebooted.",
+            "  sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh start\n"
+            "Ensure the overlay has &rtu0_0 vring IRQ and was rebooted.",
             file=sys.stderr,
         )
         return 1
@@ -174,7 +174,7 @@ def main() -> int:
         print(
             f"Permission denied opening {device}.\n"
             "Re-run with sudo, for example:\n"
-            f"  sudo python3 PRU0_0_SIDE/host/blink_count.py {args.count}",
+            f"  sudo python3 extra-examples/rtu0_0-pru0_0-rpmsg-led/LINUX_SIDE/host/blink_count.py {args.count}",
             file=sys.stderr,
         )
         return 1
