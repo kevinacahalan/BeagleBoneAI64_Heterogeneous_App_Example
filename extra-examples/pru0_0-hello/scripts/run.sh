@@ -18,14 +18,13 @@ ROOT_SCRIPTS="$REPO_ROOT/scripts"
 FW="$REPO_ROOT/build/extra-examples/pru0_0-hello/pru0_0-hello.elf"
 STOP_TIMEOUT_SEC=10
 
-# Print paths relative to the repo root (falls back to absolute if outside).
+# Print paths relative to the current working directory.
 relpath() {
     local path="$1"
-    local prefix="${REPO_ROOT}/"
-    if [[ "$path" == "$prefix"* ]]; then
-        echo "${path#"$prefix"}"
+    if realpath -m --relative-to=. "$path" >/dev/null 2>&1; then
+        realpath -m --relative-to=. "$path"
     else
-        echo "$path"
+        python3 -c 'import os, sys; print(os.path.relpath(sys.argv[1]))' "$path"
     fi
 }
 
