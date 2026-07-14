@@ -2,25 +2,27 @@
 # Start/stop RTU0_0 + PRU0_0 cooperative LED demo.
 #
 # RTU owns RPMsg (rpmsg-raw port 30); PRU blinks P8_11 from shared DMEM.
-# Do not run alongside phase-1 `debug_pru0_0.sh start rpmsg_led` (same port 30).
+# Do not run alongside pru0_0-rpmsg-led (same port 30).
 #
 # Usage:
-#   sudo ./scripts/debug_rtu_pru_led.sh start
-#   sudo ./scripts/debug_rtu_pru_led.sh stop
-#   sudo ./scripts/debug_rtu_pru_led.sh restart
-#   sudo ./scripts/debug_rtu_pru_led.sh status
-#   sudo ./scripts/debug_rtu_pru_led.sh trace
-#   sudo ./scripts/debug_rtu_pru_led.sh trace-split
-#   sudo ./scripts/debug_rtu_pru_led.sh run
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh start
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh stop
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh restart
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh status
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh trace
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh trace-split
+#   sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh run
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PRU_FW_DIR="$PROJECT_DIR/build/PRU0_0"
-RTU_FW_DIR="$PROJECT_DIR/build/RTU0_0"
-PRU_FW="$PRU_FW_DIR/pru0_0-led-worker.out"
-RTU_FW="$RTU_FW_DIR/rtu0_0-rpmsg-led.out"
+DEMO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$DEMO_DIR/../.." && pwd)"
+ROOT_SCRIPTS="$REPO_ROOT/scripts"
+FW_DIR="$REPO_ROOT/build/extra-examples/rtu0_0-pru0_0-rpmsg-led"
+PRU_FW="$FW_DIR/pru0_0-led-worker.out"
+RTU_FW="$FW_DIR/rtu0_0-rpmsg-led.out"
+HOST_SCRIPT="$DEMO_DIR/LINUX_SIDE/host/blink_count.py"
 STOP_TIMEOUT_SEC=10
 
 DEVICE_MODEL=$(cat /proc/device-tree/model | sed "s/ /_/g" | tr -d '\000')
@@ -29,8 +31,8 @@ if [ "$DEVICE_MODEL" != "BeagleBoard.org_BeagleBone_AI-64" ]; then
     exit 1
 fi
 
-RTU_rproc_number="$($SCRIPT_DIR/get_remoteproc_number.sh j7-rtu0_0)"
-PRU_rproc_number="$($SCRIPT_DIR/get_remoteproc_number.sh j7-pru0_0)"
+RTU_rproc_number="$($ROOT_SCRIPTS/get_remoteproc_number.sh j7-rtu0_0)"
+PRU_rproc_number="$($ROOT_SCRIPTS/get_remoteproc_number.sh j7-pru0_0)"
 
 print_help() {
     echo "Usage: $0 {start|stop|restart|status|trace|trace-split|run}"
@@ -40,7 +42,7 @@ print_help() {
     echo "  stop         Stop PRU then RTU"
     echo "  restart      stop + start"
     echo "  status       Show both remoteproc states"
-    echo "  trace        Live dual trace0 (merged, labeled) — default"
+    echo "  trace        Live dual trace0 (merged, labeled)"
     echo "  trace-split  Live dual trace0 in a tmux vertical split"
     echo "  run          restart + trace"
     echo ""
@@ -48,8 +50,9 @@ print_help() {
     echo "  $RTU_FW"
     echo "  $PRU_FW"
     echo ""
-    echo "Host: sudo python3 PRU0_0_SIDE/host/blink_count.py <count>"
-    echo "Do not run phase-1 rpmsg_led at the same time (both use port 30)."
+    echo "Host:  sudo python3 $HOST_SCRIPT <count>"
+    echo "Build: ./scripts/build.sh --extra rtu0_0-pru0_0-rpmsg-led"
+    echo "Do not run pru0_0-rpmsg-led at the same time (both use port 30)."
     exit 0
 }
 
@@ -101,7 +104,6 @@ stop_one() {
 }
 
 do_stop() {
-    # Stop PRU first so it is not mid-blink while RTU tears down RPMsg.
     stop_one "$PRU_rproc_number" "PRU0_0"
     stop_one "$RTU_rproc_number" "RTU0_0"
 }
@@ -114,7 +116,7 @@ start_one() {
 
     if [ ! -f "$fw" ]; then
         echo "Error: firmware not found at $fw"
-        echo "Build first with: ./scripts/build.sh --pru"
+        echo "Build first with: ./scripts/build.sh --extra rtu0_0-pru0_0-rpmsg-led"
         exit 1
     fi
 
@@ -167,7 +169,6 @@ find_rpmsg_port30() {
 }
 
 do_start() {
-    # RTU first so rpmsg-raw channel exists before PRU worker runs.
     start_one "$RTU_rproc_number" "RTU0_0" "$RTU_FW"
     start_one "$PRU_rproc_number" "PRU0_0" "$PRU_FW"
 
@@ -179,7 +180,7 @@ do_start() {
         echo "RPMsg device ready: $found (port 30)"
     else
         echo "Note: rpmsg-raw port 30 not visible yet; use:"
-        echo "  sudo python3 PRU0_0_SIDE/host/blink_count.py <count>"
+        echo "  sudo python3 $HOST_SCRIPT <count>"
         echo "If RTU boot failed with 'IRQ vring not found', rebuild/install the overlay and reboot."
     fi
 }
@@ -204,7 +205,7 @@ do_trace() {
     echo "=== RTU0_0 + PRU0_0 dual trace0 (Ctrl+C to exit) ==="
     echo "Merged stream with [RTU0_0]/[PRU0_0] labels (better for handshake order)."
     echo "For a tmux split: $0 trace-split"
-    sudo "$SCRIPT_DIR/print_dual_trace.py" \
+    sudo "$ROOT_SCRIPTS/print_dual_trace.py" \
         "$RTU_rproc_number" "RTU0_0" \
         "$PRU_rproc_number" "PRU0_0"
 }
@@ -227,9 +228,9 @@ do_trace_split() {
     echo "=== RTU0_0 | PRU0_0 split trace (tmux session $session) ==="
     tmux kill-session -t "$session" 2>/dev/null || true
     tmux new-session -d -s "$session" -n trace \
-        "echo '=== RTU0_0 (remoteproc${RTU_rproc_number}) ==='; sudo '$SCRIPT_DIR/print_trace0.py' '$RTU_rproc_number'"
+        "echo '=== RTU0_0 (remoteproc${RTU_rproc_number}) ==='; sudo '$ROOT_SCRIPTS/print_trace0.py' '$RTU_rproc_number'"
     tmux split-window -h -t "$session:trace" \
-        "echo '=== PRU0_0 (remoteproc${PRU_rproc_number}) ==='; sudo '$SCRIPT_DIR/print_trace0.py' '$PRU_rproc_number'"
+        "echo '=== PRU0_0 (remoteproc${PRU_rproc_number}) ==='; sudo '$ROOT_SCRIPTS/print_trace0.py' '$PRU_rproc_number'"
     tmux select-layout -t "$session:trace" even-horizontal
     tmux attach-session -t "$session"
 }
@@ -254,31 +255,14 @@ fi
 CMD="$1"
 
 case "$CMD" in
-    start)
-        do_start
-        ;;
-    stop)
-        do_stop
-        ;;
-    restart)
-        do_stop
-        do_start
-        ;;
-    status)
-        do_status
-        ;;
-    trace)
-        do_trace
-        ;;
-    trace-split)
-        do_trace_split
-        ;;
-    run)
-        do_run
-        ;;
-    help|--help|-h)
-        print_help
-        ;;
+    start) do_start ;;
+    stop) do_stop ;;
+    restart) do_stop; do_start ;;
+    status) do_status ;;
+    trace) do_trace ;;
+    trace-split) do_trace_split ;;
+    run) do_run ;;
+    help|--help|-h) print_help ;;
     *)
         echo "Unknown command: $CMD"
         print_help

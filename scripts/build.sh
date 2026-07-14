@@ -22,6 +22,7 @@ TI_DOCKERFILE="${REPO_ROOT}/docker/Dockerfile.ti"
 
 TARGET=""
 EXPLICIT_TARGET=""
+EXTRA_NAME=""
 BUILD_MODE="debug"
 TI_SDK_DIR="${TI_SDK_DIR_DEFAULT}"
 SKIP_IMAGE_BUILD="false"
@@ -35,6 +36,15 @@ MOUNT_SUFFIX=""
 USER_FLAGS=()
 CLEAN_ONLY="false"
 ACTION_REQUESTED="false"
+
+# Side filters (sub-options). If none are set, build all sides for the primary target.
+SIDE_LINUX="false"
+SIDE_R5="false"
+SIDE_PRU="false"
+SIDE_RTU="false"
+
+# Extra-example demo names under extra-examples/
+EXTRA_DEMOS=(pru0_0-hello pru0_0-rpmsg-led rtu0_0-pru0_0-rpmsg-led)
 
 print_header() {
     echo -e "${BLUE}============================================================${NC}"
@@ -71,28 +81,54 @@ want_ti_setup() {
         || "${FETCH_PSSP}" == "true" || "${BUILD_PSSP}" == "true" ]]
 }
 
+any_side_filter() {
+    [[ "${SIDE_LINUX}" == "true" || "${SIDE_R5}" == "true" \
+        || "${SIDE_PRU}" == "true" || "${SIDE_RTU}" == "true" ]]
+}
+
+# True if no side filters were given, or the named side was requested.
+want_side() {
+    local side="$1"
+    if ! any_side_filter; then
+        return 0
+    fi
+    case "${side}" in
+        linux) [[ "${SIDE_LINUX}" == "true" ]] ;;
+        r5)    [[ "${SIDE_R5}" == "true" ]] ;;
+        pru)   [[ "${SIDE_PRU}" == "true" ]] ;;
+        rtu)   [[ "${SIDE_RTU}" == "true" ]] ;;
+        *)     return 1 ;;
+    esac
+}
+
 print_help() {
     cat <<EOF
 Usage: ./scripts/build.sh [options]
 
 Build inside containers (Podman or Docker):
   - Debian 13 image: Linux aarch64 cross-build (gpiod v2)
-  - TI ubuntu-distro image: R5 firmware, PRU firmware, SDK/PDK, PSSP
+  - TI ubuntu-distro image: R5 + extra-examples PRU/RTU firmware, SDK/PDK, PSSP
 
 Run with no arguments to show this help.
 
-Firmware targets:
-    --linux                Build only the Linux side (aarch64).
-    --r5                   Build only the R5 firmware (requires --setup first).
-    --pru                  Build PRU0_0 + RTU0_0 firmware (requires --setup first).
-    --all                  Build Linux + R5 + PRU/RTU (requires --setup first).
+Primary targets:
+    --main                 Main demo (Linux ↔ R5F0_0). Default sides: --linux --r5
+    --extras               All demos under extra-examples/. Default: all sides present
+    --extra <name>         One extra: pru0_0-hello | pru0_0-rpmsg-led | rtu0_0-pru0_0-rpmsg-led
+    --all                  Main demo + all extras (requires --setup first for firmware)
+
+Side filters (optional sub-options; omit to build every side for the target):
+    --linux                Linux / host side
+    --r5                   R5 firmware side
+    --pru                  PRU0_0 firmware side
+    --rtu                  RTU0_0 firmware side
 
 Build mode:
     --debug                Debug build (default): app flags + PDK debug libs.
     --release              Release build: app flags + PDK release libs.
     --clean                Clean build artifacts for the selected target(s) and exit.
 
-Dependency setup (TI container; same idea for R5 and PRU):
+Dependency setup (TI container):
     --setup                Fetch/build TI SDK+PDK and PSSP+rpmsg_lib.
     --fetch-sdk            Download/extract TI SDK ${TI_SDK_VERSION}.
     --build-pdk            Build PDK debug and release libraries.
@@ -106,17 +142,22 @@ Other:
 
 Notes:
     - First-time: ./scripts/build.sh --setup
-    - Then:       ./scripts/build.sh --r5 / --pru / --linux / --all
+    - Side filters require a primary target (--main / --extras / --extra / --all).
     - Firmware targets only compile project code; they do not fetch deps.
-    - You may combine setup flags with a firmware target, e.g. --r5 --setup.
+    - You may combine setup flags with a firmware target, e.g. --main --setup.
     - SDK ${TI_SDK_VERSION} is mounted at /home/builder/ti in the TI container.
 
 Examples:
     ./scripts/build.sh --setup
+    ./scripts/build.sh --main
+    ./scripts/build.sh --main --r5
+    ./scripts/build.sh --main --linux
+    ./scripts/build.sh --extras
+    ./scripts/build.sh --extras --pru
+    ./scripts/build.sh --extra pru0_0-rpmsg-led --pru
+    ./scripts/build.sh --extra rtu0_0-pru0_0-rpmsg-led --rtu
     ./scripts/build.sh --all
-    ./scripts/build.sh --linux --release
-    ./scripts/build.sh --r5 --ti-sdk-dir "\$HOME/ti"
-    ./scripts/build.sh --pru
+    ./scripts/build.sh --all --pru
     ./scripts/build.sh --clean --all
 EOF
 }
@@ -124,20 +165,45 @@ EOF
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --linux)
-            TARGET="linux"
-            EXPLICIT_TARGET="linux"
+            SIDE_LINUX="true"
             ACTION_REQUESTED="true"
             shift
             ;;
         --r5)
-            TARGET="r5"
-            EXPLICIT_TARGET="r5"
+            SIDE_R5="true"
             ACTION_REQUESTED="true"
             shift
             ;;
         --pru)
-            TARGET="pru"
-            EXPLICIT_TARGET="pru"
+            SIDE_PRU="true"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
+        --rtu)
+            SIDE_RTU="true"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
+        --extras)
+            TARGET="extras"
+            EXPLICIT_TARGET="extras"
+            ACTION_REQUESTED="true"
+            shift
+            ;;
+        --extra)
+            if [[ $# -lt 2 ]]; then
+                print_error "--extra requires a demo name: ${EXTRA_DEMOS[*]}"
+                exit 1
+            fi
+            EXTRA_NAME="$2"
+            TARGET="extra"
+            EXPLICIT_TARGET="extra"
+            ACTION_REQUESTED="true"
+            shift 2
+            ;;
+        --main)
+            TARGET="main"
+            EXPLICIT_TARGET="main"
             ACTION_REQUESTED="true"
             shift
             ;;
@@ -148,7 +214,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --both)
-            print_warning "--both is deprecated; use --all (Linux + R5 + PRU)."
+            print_warning "--both is deprecated; use --all (main demo + extras)."
             TARGET="all"
             EXPLICIT_TARGET="all"
             ACTION_REQUESTED="true"
@@ -241,23 +307,30 @@ if [[ "${BUILD_MODE}" != "debug" && "${BUILD_MODE}" != "release" ]]; then
     exit 1
 fi
 
-# Setup flags alone (no firmware target) → dependency setup only.
-# Setup flags + --r5/--pru/--all → setup then that firmware target.
+# Setup flags alone (no primary target) → dependency setup only.
+# Setup flags + --main/--extras/--extra/--all → setup then that target.
 if want_ti_setup || [[ "${SETUP_ONLY}" == "true" ]]; then
-    if [[ "${EXPLICIT_TARGET}" == "linux" ]]; then
-        print_error "Dependency setup flags cannot be combined with --linux."
-        exit 1
-    fi
     if [[ "${EXPLICIT_TARGET}" == "" ]]; then
+        if any_side_filter; then
+            print_error "Side filters (--linux/--r5/--pru/--rtu) require a primary target."
+            print_error "Example: ./scripts/build.sh --main --r5"
+            exit 1
+        fi
         SETUP_ONLY="true"
         TARGET="setup"
-    elif [[ "${EXPLICIT_TARGET}" == "r5" || "${EXPLICIT_TARGET}" == "pru" || "${EXPLICIT_TARGET}" == "all" ]]; then
+    elif [[ "${EXPLICIT_TARGET}" == "main" || "${EXPLICIT_TARGET}" == "extras" \
+            || "${EXPLICIT_TARGET}" == "extra" || "${EXPLICIT_TARGET}" == "all" ]]; then
         TARGET="${EXPLICIT_TARGET}"
         SETUP_ONLY="false"
     fi
 fi
 
 if [[ "${CLEAN_ONLY}" == "true" && -z "${TARGET}" ]]; then
+    if any_side_filter; then
+        print_error "Side filters require a primary target with --clean."
+        print_error "Example: ./scripts/build.sh --clean --main --r5"
+        exit 1
+    fi
     TARGET="all"
 fi
 
@@ -265,8 +338,12 @@ if [[ "${CLEAN_ONLY}" != "true" && "${SETUP_ONLY}" != "true" && -z "${TARGET}" ]
     if want_ti_setup; then
         TARGET="setup"
         SETUP_ONLY="true"
+    elif any_side_filter; then
+        print_error "Side filters (--linux/--r5/--pru/--rtu) require a primary target."
+        print_error "Example: ./scripts/build.sh --main --linux"
+        exit 1
     else
-        print_error "A target is required: --linux, --r5, --pru, or --all"
+        print_error "A primary target is required: --main, --extras, --extra <name>, or --all"
         print_help
         exit 1
     fi
@@ -274,6 +351,46 @@ fi
 
 if [[ -z "${TARGET}" ]]; then
     TARGET="setup"
+fi
+
+if [[ "${TARGET}" == "extra" ]]; then
+    valid_extra="false"
+    for d in "${EXTRA_DEMOS[@]}"; do
+        if [[ "${EXTRA_NAME}" == "${d}" ]]; then
+            valid_extra="true"
+            break
+        fi
+    done
+    if [[ "${valid_extra}" != "true" ]]; then
+        print_error "Unknown --extra name: ${EXTRA_NAME}"
+        print_error "Valid: ${EXTRA_DEMOS[*]}"
+        exit 1
+    fi
+fi
+
+# Reject side filters that do not apply to the chosen primary target.
+if any_side_filter; then
+    case "${TARGET}" in
+        main)
+            if [[ "${SIDE_PRU}" == "true" || "${SIDE_RTU}" == "true" ]]; then
+                print_error "--main only supports side filters --linux and/or --r5."
+                exit 1
+            fi
+            ;;
+        extras|extra)
+            if [[ "${SIDE_LINUX}" == "true" || "${SIDE_R5}" == "true" ]]; then
+                print_error "--extras/--extra only support side filters --pru and/or --rtu."
+                exit 1
+            fi
+            ;;
+        all)
+            # all sides are valid under --all
+            ;;
+        setup)
+            print_error "Side filters cannot be used with dependency setup alone."
+            exit 1
+            ;;
+    esac
 fi
 
 if command -v docker >/dev/null 2>&1; then
@@ -481,14 +598,101 @@ run_r5_firmware() {
         "make -C /workspace/R5_SIDE clean && make -C /workspace/R5_SIDE BUILD_MODE=${BUILD_MODE}"
 }
 
-run_pru_firmware() {
+run_extra_demo() {
+    local name="$1"
+    local pssp_path="/home/builder/ti/${PSSP_DIR_NAME}"
+    local -a cmd_parts=()
+    local cmd=""
+    local do_pru="false"
+    local do_rtu="false"
+
+    if want_side pru; then
+        do_pru="true"
+    fi
+    if want_side rtu; then
+        do_rtu="true"
+    fi
+
+    case "${name}" in
+        pru0_0-hello)
+            if [[ "${do_pru}" != "true" ]]; then
+                print_info "Skipping ${name} (no --pru side selected)"
+                return 0
+            fi
+            if [[ "${CLEAN_ONLY}" == "true" ]]; then
+                cmd_parts+=("make -C /workspace/extra-examples/pru0_0-hello/PRU0_0_SIDE clean")
+            else
+                cmd_parts+=("make -C /workspace/extra-examples/pru0_0-hello/PRU0_0_SIDE clean && make -C /workspace/extra-examples/pru0_0-hello/PRU0_0_SIDE all PSSP=${pssp_path}")
+            fi
+            ;;
+        pru0_0-rpmsg-led)
+            if [[ "${do_pru}" != "true" ]]; then
+                print_info "Skipping ${name} (no --pru side selected)"
+                return 0
+            fi
+            if [[ "${CLEAN_ONLY}" == "true" ]]; then
+                cmd_parts+=("make -C /workspace/extra-examples/pru0_0-rpmsg-led/PRU0_0_SIDE clean")
+            else
+                cmd_parts+=("make -C /workspace/extra-examples/pru0_0-rpmsg-led/PRU0_0_SIDE clean && make -C /workspace/extra-examples/pru0_0-rpmsg-led/PRU0_0_SIDE all PSSP=${pssp_path}")
+            fi
+            ;;
+        rtu0_0-pru0_0-rpmsg-led)
+            if [[ "${do_pru}" != "true" && "${do_rtu}" != "true" ]]; then
+                print_info "Skipping ${name} (need --pru and/or --rtu)"
+                return 0
+            fi
+            if [[ "${CLEAN_ONLY}" == "true" ]]; then
+                if [[ "${do_pru}" == "true" ]]; then
+                    cmd_parts+=("make -C /workspace/extra-examples/rtu0_0-pru0_0-rpmsg-led/PRU0_0_SIDE clean")
+                fi
+                if [[ "${do_rtu}" == "true" ]]; then
+                    cmd_parts+=("make -C /workspace/extra-examples/rtu0_0-pru0_0-rpmsg-led/RTU0_0_SIDE clean")
+                fi
+                if [[ "${do_pru}" == "true" && "${do_rtu}" == "true" ]]; then
+                    cmd_parts+=("rm -rf /workspace/build/extra-examples/rtu0_0-pru0_0-rpmsg-led")
+                fi
+            else
+                if [[ "${do_pru}" == "true" ]]; then
+                    cmd_parts+=("make -C /workspace/extra-examples/rtu0_0-pru0_0-rpmsg-led/PRU0_0_SIDE clean && make -C /workspace/extra-examples/rtu0_0-pru0_0-rpmsg-led/PRU0_0_SIDE all PSSP=${pssp_path}")
+                fi
+                if [[ "${do_rtu}" == "true" ]]; then
+                    cmd_parts+=("make -C /workspace/extra-examples/rtu0_0-pru0_0-rpmsg-led/RTU0_0_SIDE clean && make -C /workspace/extra-examples/rtu0_0-pru0_0-rpmsg-led/RTU0_0_SIDE all PSSP=${pssp_path}")
+                fi
+            fi
+            ;;
+        *)
+            print_error "Unknown extra demo: ${name}"
+            exit 1
+            ;;
+    esac
+
+    if [[ ${#cmd_parts[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    cmd="$(join_commands "${cmd_parts[@]}")"
+    if [[ "${CLEAN_ONLY}" == "true" ]]; then
+        run_container "${TI_IMAGE}" false "${cmd}"
+    else
+        run_container "${TI_IMAGE}" true "${cmd}"
+    fi
+}
+
+run_extras_firmware() {
+    # Nothing to do if only main-demo sides were requested under --all.
+    if any_side_filter && ! want_side pru && ! want_side rtu; then
+        print_info "Skipping extra-examples (no --pru/--rtu side selected)"
+        return 0
+    fi
+
     build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
 
     if [[ "${CLEAN_ONLY}" == "true" ]]; then
-        print_header "Cleaning PRU0_0 / RTU0_0 build artifacts"
-        # No TI mount needed for clean.
-        run_container "${TI_IMAGE}" false \
-            "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/RTU0_0_SIDE clean"
+        print_header "Cleaning extra-examples build artifacts"
+        local name
+        for name in "${EXTRA_DEMOS[@]}"; do
+            run_extra_demo "${name}"
+        done
         return 0
     fi
 
@@ -497,39 +701,82 @@ run_pru_firmware() {
         check_pssp_ready
     fi
 
-    print_header "PRU0_0 + RTU0_0 firmware build"
+    print_header "extra-examples firmware build"
     print_info "TI container (clpru / lnkpru); PSSP from /home/builder/ti/${PSSP_DIR_NAME}"
-    # Mount ~/ti so Makefile can use PSSP under /home/builder/ti/...
-    run_container "${TI_IMAGE}" true \
-        "make -C /workspace/PRU0_0_SIDE clean && make -C /workspace/PRU0_0_SIDE all PSSP=/home/builder/ti/${PSSP_DIR_NAME} && make -C /workspace/RTU0_0_SIDE clean && make -C /workspace/RTU0_0_SIDE all PSSP=/home/builder/ti/${PSSP_DIR_NAME}"
+    local name
+    for name in "${EXTRA_DEMOS[@]}"; do
+        print_info "Building ${name}..."
+        run_extra_demo "${name}"
+    done
+}
+
+run_one_extra() {
+    if any_side_filter && ! want_side pru && ! want_side rtu; then
+        print_error "--extra only supports side filters --pru and/or --rtu."
+        exit 1
+    fi
+
+    build_image "${TI_IMAGE}" "${TI_DOCKERFILE}"
+
+    if [[ "${CLEAN_ONLY}" == "true" ]]; then
+        print_header "Cleaning extra-example ${EXTRA_NAME}"
+        run_extra_demo "${EXTRA_NAME}"
+        return 0
+    fi
+
+    if [[ "${BUILD_PSSP}" != "true" && "${FETCH_PSSP}" != "true" ]]; then
+        check_pssp_ready
+    fi
+
+    print_header "extra-example build: ${EXTRA_NAME}"
+    print_info "TI container (clpru / lnkpru); PSSP from /home/builder/ti/${PSSP_DIR_NAME}"
+    run_extra_demo "${EXTRA_NAME}"
+}
+
+run_main_demo() {
+    local did_something="false"
+
+    if want_side linux; then
+        run_linux_build
+        did_something="true"
+    fi
+    if want_side r5; then
+        run_r5_firmware
+        did_something="true"
+    fi
+    if [[ "${did_something}" != "true" ]]; then
+        print_info "Skipping main demo (no --linux/--r5 side selected)"
+    fi
 }
 
 case "${TARGET}" in
     setup)
         run_ti_dep_setup
         ;;
-    linux)
-        run_linux_build
-        ;;
-    r5)
+    extras)
         if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
             run_ti_dep_setup
         fi
-        run_r5_firmware
+        run_extras_firmware
         ;;
-    pru)
+    extra)
         if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
             run_ti_dep_setup
         fi
-        run_pru_firmware
+        run_one_extra
+        ;;
+    main)
+        if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
+            run_ti_dep_setup
+        fi
+        run_main_demo
         ;;
     all)
         if [[ "${CLEAN_ONLY}" != "true" ]] && want_ti_setup; then
             run_ti_dep_setup
         fi
-        run_linux_build
-        run_r5_firmware
-        run_pru_firmware
+        run_main_demo
+        run_extras_firmware
         ;;
     *)
         print_error "Unknown target: ${TARGET}"
@@ -543,15 +790,15 @@ elif [[ "${TARGET}" == "setup" || "${SETUP_ONLY}" == "true" ]]; then
     print_success "Dependency setup completed (TI SDK/PDK + PSSP)."
     print_info "SDK/PDK: ${TI_SDK_DIR}/${TI_SDK_ROOT_NAME}"
     print_info "PSSP:    ${TI_SDK_DIR}/${PSSP_DIR_NAME}"
-    print_info "Next: ./scripts/build.sh --r5 | --pru | --linux | --all"
-elif [[ "${TARGET}" == "linux" ]]; then
-    print_success "Linux build completed. Artifacts are under ./build (and LINUX_SIDE/build)."
-elif [[ "${TARGET}" == "r5" ]]; then
-    print_success "R5 build completed. Firmware ELF is under ./build/R5_0/"
-elif [[ "${TARGET}" == "pru" ]]; then
-    print_success "PRU/RTU build completed. Firmware under ./build/PRU0_0/ and ./build/RTU0_0/"
+    print_info "Next: ./scripts/build.sh --main | --extras | --all"
+elif [[ "${TARGET}" == "extras" ]]; then
+    print_success "Extra examples built. Firmware under ./build/extra-examples/"
+elif [[ "${TARGET}" == "extra" ]]; then
+    print_success "Extra example ${EXTRA_NAME} built under ./build/extra-examples/${EXTRA_NAME}/"
+elif [[ "${TARGET}" == "main" ]]; then
+    print_success "Main demo build completed. Artifacts under ./build/"
 elif [[ "${TARGET}" == "all" ]]; then
-    print_success "Full build completed (Linux + R5 + PRU/RTU). Artifacts under ./build/"
+    print_success "Full build completed (main demo + extras). Artifacts under ./build/"
 else
     print_success "Build completed. Artifacts are under ./build/"
 fi

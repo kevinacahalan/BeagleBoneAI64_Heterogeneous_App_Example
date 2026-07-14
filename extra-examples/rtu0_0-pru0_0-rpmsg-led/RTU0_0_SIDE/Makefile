@@ -1,27 +1,24 @@
-# RTU0_0_SIDE — ICSSG0 RTU0 (j7-rtu0_0) firmware
+# RTU0_0 rpmsg_led — ICSSG0 RTU0 (j7-rtu0_0) firmware
 #
-# Build inside the TI container via:
-#   ./scripts/build.sh --setup   # once: SDK/PDK + PSSP under ~/ti
-#   ./scripts/build.sh --pru     # PRU0_0 + RTU0_0 firmware
-#
-# Requires PRU_CGT (Dockerfile.ti → /usr/share/ti/cgt-pru) and PSSP under
-# $HOME/ti/pru-software-support-package (from --setup; mounted at
-# /home/builder/ti in the container).
+# Build via repo root:
+#   ./scripts/build.sh --setup
+#   ./scripts/build.sh --extras
+#   ./scripts/build.sh --extra rtu0_0-pru0_0-rpmsg-led
 
 ifndef PRU_CGT
   PRU_CGT := /usr/share/ti/cgt-pru
 endif
 
-# PSSP lives next to the Processor SDK (not in the git tree).
 PSSP ?= /home/builder/ti/pru-software-support-package
 
-REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
-OUT_DIR := $(REPO_ROOT)/build/RTU0_0
-GEN_DIR := $(OUT_DIR)/obj
-SHARED_INC := $(REPO_ROOT)/ICSSG0_SHARED/include
+DEMO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+REPO_ROOT := $(abspath $(DEMO_ROOT)/../..)
+OUT_DIR := $(REPO_ROOT)/build/extra-examples/rtu0_0-pru0_0-rpmsg-led
+GEN_DIR := $(OUT_DIR)/obj/rtu
+SHARED_INC := $(DEMO_ROOT)/ICSSG0_SHARED/include
 
 CC := $(PRU_CGT)/bin/clpru
-LINKER_CMD_RPMSG := linker/J721E_RTU0_0_rpmsg.cmd
+LINKER_CMD := linker/J721E_RTU0_0_rpmsg.cmd
 
 INCLUDE := --include_path=$(PRU_CGT)/include \
 	--include_path=$(PSSP)/include \
@@ -55,9 +52,9 @@ $(RPMSG_OBJ): $(RPMSG_SRC) include/resource_table_rpmsg.h include/intc_map_0.h \
 		$(SHARED_INC)/led_mailbox.h | $(GEN_DIR)
 	$(CC) $(CFLAGS) -fe $@ $<
 
-$(RPMSG_OUT): $(RPMSG_OBJ) $(LINKER_CMD_RPMSG)
+$(RPMSG_OUT): $(RPMSG_OBJ) $(LINKER_CMD)
 	$(CC) $(CFLAGS) -z -i$(PRU_CGT)/lib -i$(PRU_CGT)/include $(LFLAGS) \
-		-o $@ $< -m$(RPMSG_MAP) $(LINKER_CMD_RPMSG) $(LIBS_COMMON) $(LIBS_RPMSG)
+		-o $@ $< -m$(RPMSG_MAP) $(LINKER_CMD) $(LIBS_COMMON) $(LIBS_RPMSG)
 
 clean:
-	rm -rf $(OUT_DIR)
+	rm -rf $(GEN_DIR) $(RPMSG_OUT) $(RPMSG_MAP)
