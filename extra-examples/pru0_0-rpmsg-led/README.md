@@ -13,7 +13,7 @@ LINUX_SIDE/host/blink_count.py
 scripts/run.sh
 ```
 
-Firmware output: `build/extra-examples/pru0_0-rpmsg-led/pru0_0-rpmsg-led.out`
+Firmware output: `build/extra-examples/pru0_0-rpmsg-led/pru0_0-rpmsg-led.elf`
 
 ## Build
 

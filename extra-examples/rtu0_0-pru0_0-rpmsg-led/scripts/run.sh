@@ -20,8 +20,8 @@ DEMO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$DEMO_DIR/../.." && pwd)"
 ROOT_SCRIPTS="$REPO_ROOT/scripts"
 FW_DIR="$REPO_ROOT/build/extra-examples/rtu0_0-pru0_0-rpmsg-led"
-PRU_FW="$FW_DIR/pru0_0-led-worker.out"
-RTU_FW="$FW_DIR/rtu0_0-rpmsg-led.out"
+PRU_FW="$FW_DIR/pru0_0-led-worker.elf"
+RTU_FW="$FW_DIR/rtu0_0-rpmsg-led.elf"
 HOST_SCRIPT="$DEMO_DIR/LINUX_SIDE/host/blink_count.py"
 STOP_TIMEOUT_SEC=10
 

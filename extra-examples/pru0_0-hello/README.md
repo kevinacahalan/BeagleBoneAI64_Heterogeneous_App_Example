@@ -10,7 +10,7 @@ PRU0_0_SIDE/     firmware sources + Makefile
 scripts/run.sh   start / stop / trace on the board
 ```
 
-Firmware output: `build/extra-examples/pru0_0-hello/pru0_0-hello.out`
+Firmware output: `build/extra-examples/pru0_0-hello/pru0_0-hello.elf`
 
 ## Build
 
