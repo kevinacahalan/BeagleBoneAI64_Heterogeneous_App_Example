@@ -18,6 +18,17 @@ ROOT_SCRIPTS="$REPO_ROOT/scripts"
 FW="$REPO_ROOT/build/extra-examples/pru0_0-hello/pru0_0-hello.elf"
 STOP_TIMEOUT_SEC=10
 
+# Print paths relative to the repo root (falls back to absolute if outside).
+relpath() {
+    local path="$1"
+    local prefix="${REPO_ROOT}/"
+    if [[ "$path" == "$prefix"* ]]; then
+        echo "${path#"$prefix"}"
+    else
+        echo "$path"
+    fi
+}
+
 DEVICE_MODEL=$(cat /proc/device-tree/model | sed "s/ /_/g" | tr -d '\000')
 if [ "$DEVICE_MODEL" != "BeagleBoard.org_BeagleBone_AI-64" ]; then
     echo "Error: This script should only be run on a BeagleBone AI-64."
@@ -37,7 +48,7 @@ print_help() {
     echo "  trace     Show remoteproc trace0 (Ctrl+C to exit)"
     echo "  run       Restart if running, otherwise start; then trace"
     echo ""
-    echo "Firmware: $FW"
+    echo "Firmware: $(relpath "$FW")"
     echo "Build:    ./scripts/build.sh --extra pru0_0-hello"
     exit 0
 }
@@ -88,7 +99,7 @@ do_start() {
     local state
 
     if [ ! -f "$FW" ]; then
-        echo "Error: firmware not found at $FW"
+        echo "Error: firmware not found at $(relpath "$FW")"
         echo "Build first with: ./scripts/build.sh --extra pru0_0-hello"
         exit 1
     fi

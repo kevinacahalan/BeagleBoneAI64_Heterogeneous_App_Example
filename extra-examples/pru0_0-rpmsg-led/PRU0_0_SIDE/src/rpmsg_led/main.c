@@ -2,7 +2,7 @@
  * PRU0_0 RPMsg LED blink — receive blink count from Linux, toggle P8_11.
  *
  * Channel name "rpmsg-raw" probes rpmsg_char (kernel 6.12; no rpmsg_pru).
- * Port 30 → /dev/rpmsgN (see host/blink_count.py).
+ * Port 30 → /dev/rpmsgN (see scripts/blink_count.py).
  * P8_11 = PRG0_PRU0_GPO17 = __R30 bit 17 (overlay must mux mode 0).
  * Overlay must provide &pru0_0 vring IRQ or boot fails with -ENXIO.
  * Debug: remoteproc trace0 via TYPE_TRACE / gDebugMemLog.
