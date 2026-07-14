@@ -174,7 +174,7 @@ def main() -> int:
         print(
             f"Permission denied opening {device}.\n"
             "Re-run with sudo, for example:\n"
-            f"  sudo python3 extra-examples/rtu0_0-pru0_0-rpmsg-led/LINUX_SIDE/host/blink_count.py {args.count}",
+            f"  sudo python3 extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/blink_count.py {args.count}",
             file=sys.stderr,
         )
         return 1

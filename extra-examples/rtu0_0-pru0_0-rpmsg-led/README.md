@@ -11,8 +11,8 @@ Cooperative **Linux ↔ RTU0_0 ↔ PRU0_0** LED demo.
 RTU0_0_SIDE/                  RTU rpmsg_led firmware
 PRU0_0_SIDE/                  PRU led_worker firmware
 ICSSG0_SHARED/                led_mailbox.h (shared DMEM protocol)
-LINUX_SIDE/host/blink_count.py
 scripts/run.sh
+scripts/blink_count.py
 ```
 
 Firmware outputs under `build/extra-examples/rtu0_0-pru0_0-rpmsg-led/`:
@@ -33,10 +33,10 @@ Overlay must include `&rtu0_0` vring `<20 4 4>` and P8_11 pinmux — see
 [`custom_overlays/our-custom-bbai64-overlay.dtso`](../../custom_overlays/our-custom-bbai64-overlay.dtso).
 
 ```bash
-sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh start
+sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh demo      # start + blink 5 times
+sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh demo 10   # custom count
 sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh trace   # merged [RTU0_0]/[PRU0_0]
 # or: sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh trace-split
-sudo python3 extra-examples/rtu0_0-pru0_0-rpmsg-led/LINUX_SIDE/host/blink_count.py 5
 sudo ./extra-examples/rtu0_0-pru0_0-rpmsg-led/scripts/run.sh stop
 ```
 

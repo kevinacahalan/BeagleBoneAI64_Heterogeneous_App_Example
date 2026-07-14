@@ -9,8 +9,8 @@ that many times, and ACKs. The host script sends an ASCII count over `/dev/rpmsg
 
 ```
 PRU0_0_SIDE/                  firmware
-LINUX_SIDE/host/blink_count.py
 scripts/run.sh
+scripts/blink_count.py
 ```
 
 Firmware output: `build/extra-examples/pru0_0-rpmsg-led/pru0_0-rpmsg-led.elf`
@@ -29,8 +29,9 @@ vring IRQ (`<16 2 2>`) — see
 [`custom_overlays/our-custom-bbai64-overlay.dtso`](../../custom_overlays/our-custom-bbai64-overlay.dtso).
 
 ```bash
-sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh start
-sudo python3 extra-examples/pru0_0-rpmsg-led/LINUX_SIDE/host/blink_count.py 5
+sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh demo      # start + blink 5 times
+sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh demo 10   # custom count
+sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh blink 3   # blink only (already running)
 sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh trace
 sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh stop
 ```

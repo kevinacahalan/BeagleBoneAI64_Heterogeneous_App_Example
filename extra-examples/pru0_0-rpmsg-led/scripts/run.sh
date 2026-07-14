@@ -3,14 +3,10 @@
 #
 # Usage:
 #   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh start
+#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh demo      # start + blink 5
+#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh demo 10
+#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh blink 3
 #   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh stop
-#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh restart
-#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh status
-#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh trace
-#   sudo ./extra-examples/pru0_0-rpmsg-led/scripts/run.sh run
-#
-# Then blink:
-#   sudo python3 extra-examples/pru0_0-rpmsg-led/LINUX_SIDE/host/blink_count.py 5
 
 set -euo pipefail
 
@@ -19,8 +15,20 @@ DEMO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$DEMO_DIR/../.." && pwd)"
 ROOT_SCRIPTS="$REPO_ROOT/scripts"
 FW="$REPO_ROOT/build/extra-examples/pru0_0-rpmsg-led/pru0_0-rpmsg-led.elf"
-HOST_SCRIPT="$DEMO_DIR/LINUX_SIDE/host/blink_count.py"
+HOST_SCRIPT="$SCRIPT_DIR/blink_count.py"
 STOP_TIMEOUT_SEC=10
+DEFAULT_BLINK_COUNT=5
+
+# Print paths relative to the repo root (falls back to absolute if outside).
+relpath() {
+    local path="$1"
+    local prefix="${REPO_ROOT}/"
+    if [[ "$path" == "$prefix"* ]]; then
+        echo "${path#"$prefix"}"
+    else
+        echo "$path"
+    fi
+}
 
 DEVICE_MODEL=$(cat /proc/device-tree/model | sed "s/ /_/g" | tr -d '\000')
 if [ "$DEVICE_MODEL" != "BeagleBoard.org_BeagleBone_AI-64" ]; then
@@ -31,18 +39,20 @@ fi
 PRU0_0_rproc_number="$($ROOT_SCRIPTS/get_remoteproc_number.sh j7-pru0_0)"
 
 print_help() {
-    echo "Usage: $0 {start|stop|restart|status|trace|run}"
+    echo "Usage: $0 {start|stop|restart|status|trace|run|demo|blink} [count]"
     echo ""
     echo "PRU0_0 rpmsg_led (blink P8_11 via RPMsg port 30):"
-    echo "  start     Start pru0_0-rpmsg-led.elf"
-    echo "  stop      Stop PRU0_0 firmware"
-    echo "  restart   Stop then start"
-    echo "  status    Show remoteproc state"
-    echo "  trace     Show remoteproc trace0 (Ctrl+C to exit)"
-    echo "  run       Restart if running, otherwise start; then trace"
+    echo "  start          Start pru0_0-rpmsg-led.elf"
+    echo "  stop           Stop PRU0_0 firmware"
+    echo "  restart        Stop then start"
+    echo "  status         Show remoteproc state"
+    echo "  trace          Show remoteproc trace0 (Ctrl+C to exit)"
+    echo "  run            Restart if running, otherwise start; then trace"
+    echo "  demo [count]   Start firmware (if needed), then blink (default count: $DEFAULT_BLINK_COUNT)"
+    echo "  blink [count]  Send blink count only (firmware must already be running)"
     echo ""
-    echo "Firmware: $FW"
-    echo "Host:     sudo python3 $HOST_SCRIPT <count>"
+    echo "Firmware: $(relpath "$FW")"
+    echo "Host:     sudo python3 $(relpath "$HOST_SCRIPT") <count>"
     echo "Build:    ./scripts/build.sh --extra pru0_0-rpmsg-led"
     echo ""
     echo "Do not run alongside rtu0_0-pru0_0-rpmsg-led (same RPMsg port 30)."
@@ -97,7 +107,7 @@ do_start() {
     local d dst_raw dst_dec n
 
     if [ ! -f "$FW" ]; then
-        echo "Error: firmware not found at $FW"
+        echo "Error: firmware not found at $(relpath "$FW")"
         echo "Build first with: ./scripts/build.sh --extra pru0_0-rpmsg-led"
         exit 1
     fi
@@ -147,7 +157,7 @@ do_start() {
         echo "RPMsg device ready: $found (port 30)"
     else
         echo "Note: rpmsg-raw port 30 not visible yet; use:"
-        echo "  sudo python3 $HOST_SCRIPT <count>"
+        echo "  sudo python3 $(relpath "$HOST_SCRIPT") <count>"
         echo "If boot failed with 'IRQ vring not found', rebuild/install the overlay and reboot."
     fi
 
@@ -183,11 +193,38 @@ do_status() {
     echo "  Firmware: $fw"
 }
 
+do_blink() {
+    local count="${1:-$DEFAULT_BLINK_COUNT}"
+
+    if ! [[ "$count" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Error: blink count must be a positive integer (got: $count)"
+        exit 1
+    fi
+
+    echo "Sending blink count=$count via $(relpath "$HOST_SCRIPT")..."
+    sudo python3 "$HOST_SCRIPT" "$count"
+}
+
+do_demo() {
+    local count="${1:-$DEFAULT_BLINK_COUNT}"
+    local state
+
+    state=$(get_pru_state)
+    if [ "$state" != "running" ]; then
+        do_start
+    else
+        echo "PRU0_0 already running."
+    fi
+    do_blink "$count"
+}
+
 if [ $# -lt 1 ]; then
     print_help
 fi
 
 CMD="$1"
+shift || true
+ARG="${1:-}"
 
 case "$CMD" in
     start) do_start ;;
@@ -196,6 +233,8 @@ case "$CMD" in
     status) do_status ;;
     run) do_run ;;
     trace) do_trace ;;
+    blink) do_blink "$ARG" ;;
+    demo) do_demo "$ARG" ;;
     help|--help|-h) print_help ;;
     *)
         echo "Unknown command: $CMD"
